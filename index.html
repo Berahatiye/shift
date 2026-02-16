@@ -31,21 +31,6 @@
         
         body { font-family: 'Inter', system-ui, -apple-system, sans-serif; overscroll-behavior-y: none; }
         input, select, textarea { font-size: 16px !important; } 
-
-        /* Export specific styles to ensure full width capture */
-        .export-mode {
-            width: auto !important;
-            height: auto !important;
-            overflow: visible !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            z-index: -1000 !important;
-            background: white !important;
-        }
-        .export-mode th, .export-mode td {
-            white-space: normal !important; /* Allow wrapping */
-        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 fixed inset-0 overflow-hidden">
@@ -161,8 +146,6 @@
             const [newEmployeeName, setNewEmployeeName] = useState('');
             const [newEmployeeRole, setNewEmployeeRole] = useState('');
 
-            const tableRef = useRef(null);
-
             useEffect(() => { localStorage.setItem('restoran_employees', JSON.stringify(employees)); }, [employees]);
             useEffect(() => { localStorage.setItem('restoran_shifts', JSON.stringify(shifts)); }, [shifts]);
 
@@ -211,42 +194,74 @@
                 }
             };
 
-            // --- UNIVERSAL EXPORT FUNCTION ---
-            // Captures the table exactly as seen, handling sticky columns and full width
+            // --- ADVANCED EXPORT ENGINE ---
             const generateCanvas = async () => {
-                const originalTable = document.getElementById('schedule-table-container');
+                // Select only the TABLE element inside the container
+                const originalTable = document.querySelector('#schedule-table-container table');
                 if (!originalTable) return null;
 
-                // Create a clone to manipulate styles without affecting the UI
-                const clone = originalTable.cloneNode(true);
-                
-                // Set explicit width to fit content (removes horizontal scroll)
-                clone.style.width = '1200px'; 
-                clone.style.height = 'auto';
-                clone.style.overflow = 'visible';
-                clone.classList.add('export-mode');
-
-                // Remove sticky classes from the clone so it renders flat
-                const stickies = clone.querySelectorAll('.sticky');
-                stickies.forEach(el => {
-                    el.classList.remove('sticky', 'left-0', 'top-0');
-                    el.style.position = 'static';
+                // Create an invisible export container in the DOM
+                const container = document.createElement('div');
+                Object.assign(container.style, {
+                    position: 'absolute',
+                    top: '-9999px',
+                    left: '0',
+                    width: '1400px', // Fixed width for optimal spacing
+                    background: '#ffffff',
+                    padding: '20px',
+                    boxSizing: 'border-box',
+                    fontFamily: getComputedStyle(document.body).fontFamily
                 });
 
-                document.body.appendChild(clone);
+                // Header for the exported file
+                const header = document.createElement('div');
+                header.innerHTML = `
+                    <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #333;">Vardiya Çizelgesi</h1>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Hafta: ${weekStart}</p>
+                `;
+                container.appendChild(header);
+
+                // Clone the table deeply
+                const cloneTable = originalTable.cloneNode(true);
+                cloneTable.style.width = '100%';
+                cloneTable.style.borderCollapse = 'collapse';
+
+                // Normalize styles for the clone to ensure everything is visible
+                // This strips sticky positioning and ensures borders render clearly
+                cloneTable.querySelectorAll('*').forEach(el => {
+                    el.style.position = 'static'; // Remove sticky
+                    el.style.overflow = 'visible'; // Remove scrollbars
+                    if (el.tagName === 'TH' || el.tagName === 'TD') {
+                        el.style.border = '1px solid #e2e8f0';
+                        el.style.whiteSpace = 'normal';
+                        el.style.padding = '8px';
+                        el.style.fontSize = '12px';
+                    }
+                    if (el.tagName === 'TH') {
+                        el.style.backgroundColor = '#f8fafc';
+                        el.style.color = '#475569';
+                    }
+                });
+
+                container.appendChild(cloneTable);
+                document.body.appendChild(container);
+
+                // Wait slightly for DOM render
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 try {
-                    const canvas = await html2canvas(clone, {
-                        scale: 2, // 2x resolution for retina-like quality
+                    const canvas = await html2canvas(container, {
+                        scale: 2, // 2x Scale for Retina/High Quality
                         backgroundColor: "#ffffff",
-                        useCORS: true,
-                        logging: false
+                        logging: false,
+                        width: 1400,
+                        windowWidth: 1400
                     });
-                    document.body.removeChild(clone);
+                    document.body.removeChild(container);
                     return canvas;
                 } catch (err) {
-                    document.body.removeChild(clone);
-                    console.error("Canvas error", err);
+                    if (container.parentNode) document.body.removeChild(container);
+                    console.error("Canvas Gen Error:", err);
                     return null;
                 }
             };
@@ -270,28 +285,24 @@
                 const canvas = await generateCanvas();
                 if (canvas) {
                     const { jsPDF } = window.jspdf;
-                    // Orientation landscape
-                    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm' });
                     
                     const imgData = canvas.toDataURL('image/png');
-                    const imgProps = doc.getImageProperties(imgData);
+                    const imgWidth = canvas.width;
+                    const imgHeight = canvas.height;
                     
-                    const pdfWidth = doc.internal.pageSize.getWidth();
-                    const pdfHeight = doc.internal.pageSize.getHeight();
+                    // Create a PDF page that exactly fits the content (Smart Fit)
+                    // Convert pixels to mm (approx ratio)
+                    const mmWidth = imgWidth * 0.264583 * 0.5; // Scale down for PDF point system
+                    const mmHeight = imgHeight * 0.264583 * 0.5;
                     
-                    // Add Title
-                    doc.setFontSize(16);
-                    doc.text("Vardiya Çizelgesi", 10, 10);
-                    doc.setFontSize(10);
-                    doc.text(`Tarih: ${weekStart}`, 10, 16);
+                    // Dynamic Page Size
+                    const doc = new jsPDF({
+                        orientation: mmWidth > mmHeight ? 'l' : 'p',
+                        unit: 'mm',
+                        format: [mmWidth + 20, mmHeight + 20] // Add margins
+                    });
 
-                    // Fit image to page width
-                    const margin = 10;
-                    const availableWidth = pdfWidth - (margin * 2);
-                    const ratio = availableWidth / imgProps.width;
-                    const imgHeight = imgProps.height * ratio;
-                    
-                    doc.addImage(imgData, 'PNG', margin, 20, availableWidth, imgHeight);
+                    doc.addImage(imgData, 'PNG', 10, 10, mmWidth, mmHeight);
                     doc.save(`Vardiya_${weekStart}.pdf`);
                 } else {
                     alert("PDF oluşturulamadı.");
@@ -380,7 +391,7 @@
                     {/* Main Content */}
                     <main className="flex-1 overflow-hidden relative flex flex-col">
                         <div className="flex-1 overflow-auto custom-scroll overscroll-x-contain">
-                            {/* Wrap table in a container we can easily clone */}
+                            {/* Identifier for cloning */}
                             <div id="schedule-table-container">
                                 <table className="border-collapse w-full bg-white">
                                     <thead className="bg-slate-50 sticky top-0 z-20 shadow-sm">
