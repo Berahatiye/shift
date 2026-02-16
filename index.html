@@ -54,6 +54,10 @@
         const getWeekDates = (startDateStr) => {
             const start = new Date(startDateStr);
             const dates = [];
+            for (let i = 7; i < 14; i++) { // Start from next monday? No, stick to current logic
+                // Reset to current logic
+            }
+            // Fix: Standard week generation
             for (let i = 0; i < 7; i++) {
                 const d = new Date(start);
                 d.setDate(start.getDate() + i);
@@ -66,11 +70,9 @@
             return dates;
         };
 
+        // SINGLE EXAMPLE EMPLOYEE
         const defaultEmployees = [
-            { id: '1', name: 'Ahmet Yılmaz', role: 'Mutfak Şefi' },
-            { id: '2', name: 'Ayşe Demir', role: 'Garson' },
-            { id: '3', name: 'Mehmet Kaya', role: 'Kurye' },
-            { id: '4', name: 'Zeynep Çelik', role: 'Komi' },
+            { id: 'example', name: 'Örnek Personel', role: 'Pozisyon' }
         ];
 
         // --- COMPONENTS ---
@@ -183,7 +185,13 @@
 
             const handleAddEmployee = () => {
                 if (!newEmployeeName) return;
-                setEmployees(prev => [...prev, { id: generateId(), name: newEmployeeName, role: newEmployeeRole || 'Personel' }]);
+                
+                setEmployees(prev => {
+                    // Remove "example" employee if present when adding a real one
+                    const realEmployees = prev.filter(e => e.id !== 'example');
+                    return [...realEmployees, { id: generateId(), name: newEmployeeName, role: newEmployeeRole || 'Personel' }];
+                });
+                
                 setNewEmployeeName('');
                 setNewEmployeeRole('');
             };
@@ -196,24 +204,21 @@
 
             // --- ADVANCED EXPORT ENGINE ---
             const generateCanvas = async () => {
-                // Select only the TABLE element inside the container
                 const originalTable = document.querySelector('#schedule-table-container table');
                 if (!originalTable) return null;
 
-                // Create an invisible export container in the DOM
                 const container = document.createElement('div');
                 Object.assign(container.style, {
                     position: 'absolute',
                     top: '-9999px',
                     left: '0',
-                    width: '1400px', // Fixed width for optimal spacing
+                    width: '1400px', 
                     background: '#ffffff',
                     padding: '20px',
                     boxSizing: 'border-box',
                     fontFamily: getComputedStyle(document.body).fontFamily
                 });
 
-                // Header for the exported file
                 const header = document.createElement('div');
                 header.innerHTML = `
                     <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #333;">Vardiya Çizelgesi</h1>
@@ -221,16 +226,13 @@
                 `;
                 container.appendChild(header);
 
-                // Clone the table deeply
                 const cloneTable = originalTable.cloneNode(true);
                 cloneTable.style.width = '100%';
                 cloneTable.style.borderCollapse = 'collapse';
 
-                // Normalize styles for the clone to ensure everything is visible
-                // This strips sticky positioning and ensures borders render clearly
                 cloneTable.querySelectorAll('*').forEach(el => {
-                    el.style.position = 'static'; // Remove sticky
-                    el.style.overflow = 'visible'; // Remove scrollbars
+                    el.style.position = 'static'; 
+                    el.style.overflow = 'visible'; 
                     if (el.tagName === 'TH' || el.tagName === 'TD') {
                         el.style.border = '1px solid #e2e8f0';
                         el.style.whiteSpace = 'normal';
@@ -246,12 +248,11 @@
                 container.appendChild(cloneTable);
                 document.body.appendChild(container);
 
-                // Wait slightly for DOM render
                 await new Promise(resolve => setTimeout(resolve, 100));
 
                 try {
                     const canvas = await html2canvas(container, {
-                        scale: 2, // 2x Scale for Retina/High Quality
+                        scale: 2, 
                         backgroundColor: "#ffffff",
                         logging: false,
                         width: 1400,
@@ -290,16 +291,13 @@
                     const imgWidth = canvas.width;
                     const imgHeight = canvas.height;
                     
-                    // Create a PDF page that exactly fits the content (Smart Fit)
-                    // Convert pixels to mm (approx ratio)
-                    const mmWidth = imgWidth * 0.264583 * 0.5; // Scale down for PDF point system
+                    const mmWidth = imgWidth * 0.264583 * 0.5; 
                     const mmHeight = imgHeight * 0.264583 * 0.5;
                     
-                    // Dynamic Page Size
                     const doc = new jsPDF({
                         orientation: mmWidth > mmHeight ? 'l' : 'p',
                         unit: 'mm',
-                        format: [mmWidth + 20, mmHeight + 20] // Add margins
+                        format: [mmWidth + 20, mmHeight + 20] 
                     });
 
                     doc.addImage(imgData, 'PNG', 10, 10, mmWidth, mmHeight);
