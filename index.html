@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Restoran Vardiya Planlayıcı</title>
+    <title>Çınarcık Vardiya</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,22 +18,17 @@
     <!-- jsPDF & html2canvas for Perfect Exports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    
-    <!-- Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        /* Custom Scrollbar */
+        /* UI Polish */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         
-        /* Mobile Optimization */
         body { font-family: 'Inter', system-ui, -apple-system, sans-serif; overscroll-behavior-y: none; }
         input, select, textarea { font-size: 16px !important; } 
         
-        /* Animations */
         @keyframes fade-in {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
@@ -47,7 +42,9 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- ICONS ---
+        const LOGO_URL = "https://raw.githubusercontent.com/Berahatiye/rose/refs/heads/main/rosecafelogo.webp";
+
+        // --- ICONS (Embedded SVGs for stability) ---
         const IconChef = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>;
         const IconImage = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
         const IconPdf = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
@@ -57,10 +54,19 @@
         const IconChevronDown = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
         const IconCheck = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
 
-        // --- UTILITIES ---
+        // --- SAFE DATA HANDLING ---
+        const safeJSONParse = (key, fallback) => {
+            try {
+                const item = localStorage.getItem(key);
+                return item ? JSON.parse(item) : fallback;
+            } catch (e) {
+                console.error("Data load error", e);
+                return fallback;
+            }
+        };
+
         const generateId = () => Math.random().toString(36).substr(2, 9);
         
-        // Formatter for DD.MM.YYYY
         const formatDateTR = (dateStr) => {
             if (!dateStr) return '';
             const [year, month, day] = dateStr.split('-');
@@ -82,14 +88,8 @@
             return dates;
         };
 
-        // SINGLE EXAMPLE EMPLOYEE (Deleted on first add)
-        const defaultEmployees = [
-            { id: 'example', name: 'Örnek Personel', role: 'Garson' }
-        ];
-
         // --- COMPONENTS ---
 
-        // Hour Picker (00 - 24)
         const TimePicker = ({ label, value, onChange }) => {
             const hour = value ? value.split(':')[0] : '12';
             const hours = Array.from({ length: 25 }, (_, i) => i.toString().padStart(2, '0'));
@@ -134,10 +134,10 @@
         };
 
         const App = () => {
-            // State
             const [employees, setEmployees] = useState(() => {
-                const saved = localStorage.getItem('restoran_employees');
-                return saved ? JSON.parse(saved) : defaultEmployees;
+                const data = safeJSONParse('restoran_employees', null);
+                if (Array.isArray(data) && data.length > 0) return data;
+                return [{ id: 'example', name: 'Örnek Personel', role: 'Garson' }];
             });
             
             const [weekStart, setWeekStart] = useState(() => {
@@ -149,26 +149,25 @@
             });
 
             const [shifts, setShifts] = useState(() => {
-                const saved = localStorage.getItem('restoran_shifts');
-                return saved ? JSON.parse(saved) : {};
+                return safeJSONParse('restoran_shifts', {});
             });
 
-            // UI State
             const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
             const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
             const [activeCell, setActiveCell] = useState(null); 
             const [loading, setLoading] = useState(false);
             
-            // Edit Shift State
             const [editShiftData, setEditShiftData] = useState({ start: '10:00', end: '18:00', label: '', color: 'blue', isOff: false });
-            
-            // New Employee State
             const [newEmployeeName, setNewEmployeeName] = useState('');
             const [newEmployeeRole, setNewEmployeeRole] = useState('');
 
-            // Persistence
-            useEffect(() => { localStorage.setItem('restoran_employees', JSON.stringify(employees)); }, [employees]);
-            useEffect(() => { localStorage.setItem('restoran_shifts', JSON.stringify(shifts)); }, [shifts]);
+            // Safe Save
+            useEffect(() => { 
+                if(Array.isArray(employees)) localStorage.setItem('restoran_employees', JSON.stringify(employees)); 
+            }, [employees]);
+            useEffect(() => { 
+                if(shifts && typeof shifts === 'object') localStorage.setItem('restoran_shifts', JSON.stringify(shifts)); 
+            }, [shifts]);
 
             const weekDates = getWeekDates(weekStart);
             const getShift = (empId, date) => shifts[`${empId}_${date}`];
@@ -190,7 +189,6 @@
                 const key = `${activeCell.empId}_${activeCell.date}`;
                 
                 const saveData = { ...editShiftData };
-                // If OFF, clean up data for display
                 if (saveData.isOff) {
                     saveData.color = 'red'; 
                     if (!saveData.label) saveData.label = ''; 
@@ -215,7 +213,6 @@
                 if (!newEmployeeName) return;
                 
                 setEmployees(prev => {
-                    // Smart feature: Remove "Example Personel" when a real person is added
                     const realEmployees = prev.filter(e => e.id !== 'example');
                     return [...realEmployees, { id: generateId(), name: newEmployeeName, role: newEmployeeRole || 'Personel' }];
                 });
@@ -230,12 +227,11 @@
                 }
             };
 
-            // --- EXPORT ENGINE ---
+            // Export Engine
             const generateCanvas = async () => {
                 const originalTable = document.querySelector('#schedule-table-container table');
                 if (!originalTable) return null;
 
-                // Create hidden high-res container
                 const container = document.createElement('div');
                 Object.assign(container.style, {
                     position: 'absolute',
@@ -252,17 +248,16 @@
 
                 const header = document.createElement('div');
                 header.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
+                        <img src="${LOGO_URL}" style="width: 80px; height: 80px; border-radius: 12px; object-fit: cover;" crossorigin="anonymous" />
                         <div>
-                            <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 5px; color: #1e293b;">Vardiya Çizelgesi</h1>
-                            <p style="font-size: 16px; color: #64748b;">Hafta Başlangıcı: <strong style="color: #0f172a;">${formattedWeekStart}</strong></p>
+                            <h1 style="font-size: 32px; font-weight: bold; margin: 0; color: #1e293b; line-height: 1.1;">Çınarcık</h1>
+                            <p style="font-size: 14px; color: #64748b; margin: 5px 0 0 0; font-weight: 500;">Hafta Başlangıcı: <strong style="color: #0f172a;">${formattedWeekStart}</strong></p>
                         </div>
-                        <div style="font-size: 12px; color: #94a3b8;">Restoran Vardiya Planlayıcı</div>
                     </div>
                 `;
                 container.appendChild(header);
 
-                // Clone and normalize table
                 const cloneTable = originalTable.cloneNode(true);
                 cloneTable.style.width = '100%';
                 cloneTable.style.borderCollapse = 'collapse';
@@ -284,7 +279,6 @@
                         el.style.color = '#334155';
                         el.style.fontWeight = 'bold';
                     }
-                    // Align name column left
                     if(el.tagName === 'TD' && el.cellIndex === 0) {
                         el.style.textAlign = 'left';
                     }
@@ -293,7 +287,7 @@
                 container.appendChild(cloneTable);
                 document.body.appendChild(container);
 
-                await new Promise(resolve => setTimeout(resolve, 200)); // Ensure render
+                await new Promise(resolve => setTimeout(resolve, 300)); 
 
                 try {
                     const canvas = await html2canvas(container, {
@@ -301,7 +295,8 @@
                         backgroundColor: "#ffffff",
                         logging: false,
                         width: 1400,
-                        windowWidth: 1400
+                        windowWidth: 1400,
+                        useCORS: true
                     });
                     document.body.removeChild(container);
                     return canvas;
@@ -317,7 +312,7 @@
                 const canvas = await generateCanvas();
                 if (canvas) {
                     const link = document.createElement('a');
-                    link.download = `Vardiya_${weekStart}.png`;
+                    link.download = `Cinarcik_Vardiya_${weekStart}.png`;
                     link.href = canvas.toDataURL("image/png");
                     link.click();
                 } else {
@@ -331,22 +326,18 @@
                 const canvas = await generateCanvas();
                 if (canvas) {
                     const { jsPDF } = window.jspdf;
-                    
                     const imgData = canvas.toDataURL('image/png');
                     const imgWidth = canvas.width;
                     const imgHeight = canvas.height;
-                    
                     const mmWidth = imgWidth * 0.264583 * 0.5; 
                     const mmHeight = imgHeight * 0.264583 * 0.5;
-                    
                     const doc = new jsPDF({
                         orientation: mmWidth > mmHeight ? 'l' : 'p',
                         unit: 'mm',
                         format: [mmWidth + 20, mmHeight + 20] 
                     });
-
                     doc.addImage(imgData, 'PNG', 10, 10, mmWidth, mmHeight);
-                    doc.save(`Vardiya_${weekStart}.pdf`);
+                    doc.save(`Cinarcik_Vardiya_${weekStart}.pdf`);
                 } else {
                     alert("PDF oluşturulamadı.");
                 }
@@ -362,7 +353,7 @@
                 
                 if (shift) {
                     if (shift.isOff) {
-                        bgClass = "bg-red-50 border-red-100"; // OFF Style
+                        bgClass = "bg-red-50 border-red-100";
                     } else {
                         if (shift.color === 'blue') bgClass = "bg-blue-50 border-blue-200"; 
                         if (shift.color === 'green') bgClass = "bg-emerald-50 border-emerald-200"; 
@@ -411,17 +402,18 @@
 
             return (
                 <div className="h-full flex flex-col bg-white">
-                    {/* Header */}
                     <header className="bg-white border-b border-slate-200 px-3 py-3 flex items-center justify-between shrink-0 z-30 shadow-sm">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            <div className="bg-orange-600 text-white p-1.5 rounded-lg shrink-0">
-                                <IconChef />
-                            </div>
-                            <h1 className="text-lg font-bold text-slate-800 truncate">Vardiya</h1>
+                        <div className="flex items-center gap-3 overflow-hidden">
+                            <img 
+                                src={LOGO_URL} 
+                                className="w-10 h-10 rounded-lg object-cover border border-slate-200" 
+                                alt="Logo" 
+                                crossOrigin="anonymous"
+                            />
+                            <h1 className="text-lg font-bold text-slate-800 truncate">Çınarcık</h1>
                         </div>
 
                         <div className="flex items-center gap-2">
-                             {/* Custom Date Display with Native Picker Overlay */}
                              <div className="relative bg-slate-100 rounded-lg p-2 w-28 sm:w-32 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors">
                                 <span className="text-xs font-bold text-slate-700">{formatDateTR(weekStart)}</span>
                                 <input 
@@ -447,7 +439,6 @@
                         </div>
                     </header>
 
-                    {/* Main Content */}
                     <main className="flex-1 overflow-hidden relative flex flex-col">
                         <div className="flex-1 overflow-auto custom-scroll overscroll-x-contain">
                             <div id="schedule-table-container">
@@ -461,7 +452,6 @@
                                                 const isToday = new Date().toISOString().split('T')[0] === d.fullDate;
                                                 const headerBg = isToday ? "bg-blue-50" : "bg-slate-50";
                                                 const textColor = isToday ? "text-blue-600" : "text-slate-700";
-
                                                 return (
                                                     <th key={d.fullDate} className={`p-2 text-center border-b border-slate-200 min-w-[105px] select-none ${headerBg}`}>
                                                         <div className="flex flex-col items-center">
@@ -496,65 +486,33 @@
                         </div>
                     </main>
 
-                    {/* Edit Shift Modal */}
                     <Modal isOpen={isShiftModalOpen} onClose={() => setIsShiftModalOpen(false)} title="Vardiya Düzenle">
                         <div className="space-y-5">
-                            
-                            {/* OFF Toggle */}
                             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
                                 <span className="text-sm font-bold text-slate-700">İzinli (OFF)</span>
                                 <button 
                                     onClick={() => setEditShiftData(prev => ({...prev, isOff: !prev.isOff}))}
                                     className={`relative w-12 h-6 rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${editShiftData.isOff ? 'bg-red-500' : 'bg-slate-300'}`}
                                 >
-                                    <span 
-                                        className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ease-in-out ${editShiftData.isOff ? 'translate-x-6' : 'translate-x-0'}`}
-                                    />
+                                    <span className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ease-in-out ${editShiftData.isOff ? 'translate-x-6' : 'translate-x-0'}`} />
                                 </button>
                             </div>
 
                             {!editShiftData.isOff && (
                                 <div className="space-y-5 animate-fade-in">
                                     <div className="flex gap-3">
-                                        <TimePicker 
-                                            label="BAŞLANGIÇ" 
-                                            value={editShiftData.start} 
-                                            onChange={(v) => setEditShiftData({...editShiftData, start: v})} 
-                                        />
-                                        <TimePicker 
-                                            label="BİTİŞ" 
-                                            value={editShiftData.end} 
-                                            onChange={(v) => setEditShiftData({...editShiftData, end: v})} 
-                                        />
+                                        <TimePicker label="BAŞLANGIÇ" value={editShiftData.start} onChange={(v) => setEditShiftData({...editShiftData, start: v})} />
+                                        <TimePicker label="BİTİŞ" value={editShiftData.end} onChange={(v) => setEditShiftData({...editShiftData, end: v})} />
                                     </div>
-
                                     <div>
                                         <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Etiket (Opsiyonel)</label>
-                                        <input 
-                                            type="text" 
-                                            value={editShiftData.label}
-                                            onChange={e => setEditShiftData({...editShiftData, label: e.target.value})}
-                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-orange-500"
-                                            placeholder="Not..."
-                                        />
+                                        <input type="text" value={editShiftData.label} onChange={e => setEditShiftData({...editShiftData, label: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-orange-500" placeholder="Not..." />
                                     </div>
-
                                     <div>
                                         <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Renk</label>
                                         <div className="flex justify-between gap-3">
                                             {['blue', 'green', 'yellow', 'purple', 'red'].map(c => (
-                                                <button 
-                                                    key={c}
-                                                    onClick={() => setEditShiftData({...editShiftData, color: c})}
-                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${
-                                                        editShiftData.color === c ? 'scale-110 shadow-md ring-2 ring-offset-2 ring-gray-300' : 'opacity-80 hover:opacity-100'
-                                                    } ${
-                                                        c === 'blue' ? 'bg-blue-400' : 
-                                                        c === 'green' ? 'bg-emerald-400' : 
-                                                        c === 'yellow' ? 'bg-amber-400' : 
-                                                        c === 'purple' ? 'bg-purple-400' : 'bg-rose-400'
-                                                    }`}
-                                                >
+                                                <button key={c} onClick={() => setEditShiftData({...editShiftData, color: c})} className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${editShiftData.color === c ? 'scale-110 shadow-md ring-2 ring-offset-2 ring-gray-300' : 'opacity-80 hover:opacity-100'} ${c === 'blue' ? 'bg-blue-400' : c === 'green' ? 'bg-emerald-400' : c === 'yellow' ? 'bg-amber-400' : c === 'purple' ? 'bg-purple-400' : 'bg-rose-400'}`}>
                                                     {editShiftData.color === c && <IconCheck className="text-white" />}
                                                 </button>
                                             ))}
@@ -576,35 +534,15 @@
                         </div>
                     </Modal>
 
-                    {/* Employee Modal */}
                     <Modal isOpen={isEmployeeModalOpen} onClose={() => setIsEmployeeModalOpen(false)} title="Personel Yönetimi">
                          <div className="space-y-4">
                             <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                                 <div className="space-y-3">
-                                    <input 
-                                        type="text" 
-                                        value={newEmployeeName}
-                                        onChange={e => setNewEmployeeName(e.target.value)}
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-orange-500"
-                                        placeholder="Ad Soyad"
-                                    />
-                                    <input 
-                                        type="text" 
-                                        value={newEmployeeRole}
-                                        onChange={e => setNewEmployeeRole(e.target.value)}
-                                        className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-orange-500"
-                                        placeholder="Rol (Garson, Komi, Kurye...)"
-                                    />
-                                    <button 
-                                        onClick={handleAddEmployee}
-                                        disabled={!newEmployeeName}
-                                        className="w-full py-2 bg-slate-800 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                                    >
-                                        Ekle
-                                    </button>
+                                    <input type="text" value={newEmployeeName} onChange={e => setNewEmployeeName(e.target.value)} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-orange-500" placeholder="Ad Soyad" />
+                                    <input type="text" value={newEmployeeRole} onChange={e => setNewEmployeeRole(e.target.value)} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-orange-500" placeholder="Rol (Garson, Komi, Kurye...)" />
+                                    <button onClick={handleAddEmployee} disabled={!newEmployeeName} className="w-full py-2 bg-slate-800 text-white rounded-lg text-sm font-medium disabled:opacity-50">Ekle</button>
                                 </div>
                             </div>
-
                             <div className="max-h-[40vh] overflow-y-auto">
                                 <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Liste</h4>
                                 <ul className="space-y-2">
@@ -614,9 +552,7 @@
                                                 <div className="font-semibold text-sm text-gray-800">{e.name}</div>
                                                 <div className="text-xs text-gray-500">{e.role}</div>
                                             </div>
-                                            <button onClick={() => handleRemoveEmployee(e.id)} className="text-red-400 p-2">
-                                                <IconTrash />
-                                            </button>
+                                            <button onClick={() => handleRemoveEmployee(e.id)} className="text-red-400 p-2"><IconTrash /></button>
                                         </li>
                                     ))}
                                 </ul>
