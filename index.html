@@ -15,11 +15,8 @@
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- jsPDF & AutoTable for PDF Export -->
+    <!-- jsPDF & html2canvas for Perfect Exports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-
-    <!-- html2canvas for Image Export -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     
     <!-- Icons -->
@@ -34,6 +31,21 @@
         
         body { font-family: 'Inter', system-ui, -apple-system, sans-serif; overscroll-behavior-y: none; }
         input, select, textarea { font-size: 16px !important; } 
+
+        /* Export specific styles to ensure full width capture */
+        .export-mode {
+            width: auto !important;
+            height: auto !important;
+            overflow: visible !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: -1000 !important;
+            background: white !important;
+        }
+        .export-mode th, .export-mode td {
+            white-space: normal !important; /* Allow wrapping */
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 fixed inset-0 overflow-hidden">
@@ -78,14 +90,9 @@
 
         // --- COMPONENTS ---
 
-        // Custom 24h Time Picker Component (00 to 24) - Minutes removed
         const TimePicker = ({ label, value, onChange }) => {
-            // Value is "HH:MM", we only care about HH
             const hour = value ? value.split(':')[0] : '12';
-
-            // Hours from 00 to 24
             const hours = Array.from({ length: 25 }, (_, i) => i.toString().padStart(2, '0'));
-
             const handleHourChange = (e) => onChange(`${e.target.value}:00`);
 
             return (
@@ -154,6 +161,8 @@
             const [newEmployeeName, setNewEmployeeName] = useState('');
             const [newEmployeeRole, setNewEmployeeRole] = useState('');
 
+            const tableRef = useRef(null);
+
             useEffect(() => { localStorage.setItem('restoran_employees', JSON.stringify(employees)); }, [employees]);
             useEffect(() => { localStorage.setItem('restoran_shifts', JSON.stringify(shifts)); }, [shifts]);
 
@@ -202,52 +211,92 @@
                 }
             };
 
-            const exportPDF = () => {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({ orientation: 'landscape' });
-                doc.setFontSize(18);
-                doc.text("Haftalik Vardiya Cizelgesi", 14, 15);
-                doc.setFontSize(10);
-                doc.setTextColor(100);
-                doc.text(`Tarih: ${weekStart}`, 14, 21);
+            // --- UNIVERSAL EXPORT FUNCTION ---
+            // Captures the table exactly as seen, handling sticky columns and full width
+            const generateCanvas = async () => {
+                const originalTable = document.getElementById('schedule-table-container');
+                if (!originalTable) return null;
 
-                const tableHeaders = [["Personel", ...weekDates.map(d => `${d.dayName}\n${d.displayDate}`)]];
+                // Create a clone to manipulate styles without affecting the UI
+                const clone = originalTable.cloneNode(true);
                 
-                const tableData = employees.map(emp => {
-                    const row = [`${emp.name}\n(${emp.role})`];
-                    weekDates.forEach(d => {
-                        const shift = getShift(emp.id, d.fullDate);
-                        row.push(shift ? `${shift.start} - ${shift.end}\n${shift.label || ''}` : "");
-                    });
-                    return row;
+                // Set explicit width to fit content (removes horizontal scroll)
+                clone.style.width = '1200px'; 
+                clone.style.height = 'auto';
+                clone.style.overflow = 'visible';
+                clone.classList.add('export-mode');
+
+                // Remove sticky classes from the clone so it renders flat
+                const stickies = clone.querySelectorAll('.sticky');
+                stickies.forEach(el => {
+                    el.classList.remove('sticky', 'left-0', 'top-0');
+                    el.style.position = 'static';
                 });
 
-                doc.autoTable({
-                    head: tableHeaders,
-                    body: tableData,
-                    startY: 25,
-                    theme: 'grid',
-                    headStyles: { fillColor: [41, 37, 36], halign: 'center', valign: 'middle' },
-                    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', halign: 'center', valign: 'middle', lineColor: [200, 200, 200] },
-                    columnStyles: { 0: { halign: 'left', fontStyle: 'bold', cellWidth: 35 } },
-                });
-                doc.save(`Vardiya_${weekStart}.pdf`);
+                document.body.appendChild(clone);
+
+                try {
+                    const canvas = await html2canvas(clone, {
+                        scale: 2, // 2x resolution for retina-like quality
+                        backgroundColor: "#ffffff",
+                        useCORS: true,
+                        logging: false
+                    });
+                    document.body.removeChild(clone);
+                    return canvas;
+                } catch (err) {
+                    document.body.removeChild(clone);
+                    console.error("Canvas error", err);
+                    return null;
+                }
             };
 
-            const exportPNG = () => {
+            const exportPNG = async () => {
                 setLoading(true);
-                const tableElement = document.getElementById('schedule-table');
-                html2canvas(tableElement, { scale: 2, backgroundColor: "#ffffff", useCORS: true }).then(canvas => {
+                const canvas = await generateCanvas();
+                if (canvas) {
                     const link = document.createElement('a');
                     link.download = `Vardiya_${weekStart}.png`;
                     link.href = canvas.toDataURL("image/png");
                     link.click();
-                    setLoading(false);
-                }).catch(err => {
-                    console.error("Hata:", err);
+                } else {
                     alert("Resim oluşturulamadı.");
-                    setLoading(false);
-                });
+                }
+                setLoading(false);
+            };
+
+            const exportPDF = async () => {
+                setLoading(true);
+                const canvas = await generateCanvas();
+                if (canvas) {
+                    const { jsPDF } = window.jspdf;
+                    // Orientation landscape
+                    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm' });
+                    
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgProps = doc.getImageProperties(imgData);
+                    
+                    const pdfWidth = doc.internal.pageSize.getWidth();
+                    const pdfHeight = doc.internal.pageSize.getHeight();
+                    
+                    // Add Title
+                    doc.setFontSize(16);
+                    doc.text("Vardiya Çizelgesi", 10, 10);
+                    doc.setFontSize(10);
+                    doc.text(`Tarih: ${weekStart}`, 10, 16);
+
+                    // Fit image to page width
+                    const margin = 10;
+                    const availableWidth = pdfWidth - (margin * 2);
+                    const ratio = availableWidth / imgProps.width;
+                    const imgHeight = imgProps.height * ratio;
+                    
+                    doc.addImage(imgData, 'PNG', margin, 20, availableWidth, imgHeight);
+                    doc.save(`Vardiya_${weekStart}.pdf`);
+                } else {
+                    alert("PDF oluşturulamadı.");
+                }
+                setLoading(false);
             };
 
             const renderShiftCell = (emp, dateObj) => {
@@ -318,11 +367,11 @@
                             </button>
                             <div className="flex bg-slate-100 rounded-lg p-0.5">
                                 <button onClick={exportPDF} title="PDF İndir" className="p-1.5 text-slate-600 hover:text-orange-600 hover:bg-white rounded-md transition-all">
-                                    <IconPdf />
+                                    {loading ? <span className="block w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></span> : <IconPdf />}
                                 </button>
                                 <div className="w-px bg-slate-200 my-1"></div>
                                 <button onClick={exportPNG} title="Resim (PNG) İndir" className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-white rounded-md transition-all">
-                                    {loading ? <span className="block w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></span> : <IconImage />}
+                                    {loading ? <span className="block w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></span> : <IconImage />}
                                 </button>
                             </div>
                         </div>
@@ -331,46 +380,49 @@
                     {/* Main Content */}
                     <main className="flex-1 overflow-hidden relative flex flex-col">
                         <div className="flex-1 overflow-auto custom-scroll overscroll-x-contain">
-                            <table id="schedule-table" className="border-collapse w-full bg-white">
-                                <thead className="bg-slate-50 sticky top-0 z-20 shadow-sm">
-                                    <tr>
-                                        <th className="p-2 text-left border-b border-r border-slate-200 min-w-[130px] sticky left-0 bg-slate-50 z-20">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Personel</span>
-                                        </th>
-                                        {weekDates.map(d => {
-                                            const isToday = new Date().toISOString().split('T')[0] === d.fullDate;
-                                            const headerBg = isToday ? "bg-blue-50" : "bg-slate-50";
-                                            const textColor = isToday ? "text-blue-600" : "text-slate-700";
+                            {/* Wrap table in a container we can easily clone */}
+                            <div id="schedule-table-container">
+                                <table className="border-collapse w-full bg-white">
+                                    <thead className="bg-slate-50 sticky top-0 z-20 shadow-sm">
+                                        <tr>
+                                            <th className="p-2 text-left border-b border-r border-slate-200 min-w-[130px] sticky left-0 bg-slate-50 z-20">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Personel</span>
+                                            </th>
+                                            {weekDates.map(d => {
+                                                const isToday = new Date().toISOString().split('T')[0] === d.fullDate;
+                                                const headerBg = isToday ? "bg-blue-50" : "bg-slate-50";
+                                                const textColor = isToday ? "text-blue-600" : "text-slate-700";
 
-                                            return (
-                                                <th key={d.fullDate} className={`p-2 text-center border-b border-slate-200 min-w-[105px] select-none ${headerBg}`}>
-                                                    <div className="flex flex-col items-center">
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase truncate w-full">{d.dayName}</span>
-                                                        <span className={`text-xs font-bold ${textColor}`}>{d.displayDate}</span>
-                                                    </div>
-                                                </th>
-                                            )
-                                        })}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {employees.map(emp => (
-                                        <tr key={emp.id}>
-                                            <td className="p-3 border-r border-b border-slate-200 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                                <div className="flex justify-between items-center">
-                                                    <div>
-                                                        <div className="font-semibold text-sm text-slate-800 leading-tight">{emp.name}</div>
-                                                        <div className="text-[10px] text-slate-500">{emp.role}</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            {weekDates.map(d => renderShiftCell(emp, d))}
+                                                return (
+                                                    <th key={d.fullDate} className={`p-2 text-center border-b border-slate-200 min-w-[105px] select-none ${headerBg}`}>
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase truncate w-full">{d.dayName}</span>
+                                                            <span className={`text-xs font-bold ${textColor}`}>{d.displayDate}</span>
+                                                        </div>
+                                                    </th>
+                                                )
+                                            })}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            <div className="p-8 text-center text-slate-400 text-sm">
-                                {employees.length === 0 && "Personel eklemek için yukarıdaki kullanıcı ikonuna tıkla."}
+                                    </thead>
+                                    <tbody>
+                                        {employees.map(emp => (
+                                            <tr key={emp.id}>
+                                                <td className="p-3 border-r border-b border-slate-200 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                                    <div className="flex justify-between items-center">
+                                                        <div>
+                                                            <div className="font-semibold text-sm text-slate-800 leading-tight">{emp.name}</div>
+                                                            <div className="text-[10px] text-slate-500">{emp.role}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                {weekDates.map(d => renderShiftCell(emp, d))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                <div className="p-8 text-center text-slate-400 text-sm no-print">
+                                    {employees.length === 0 && "Personel eklemek için yukarıdaki kullanıcı ikonuna tıkla."}
+                                </div>
                             </div>
                         </div>
                     </main>
