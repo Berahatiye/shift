@@ -5,79 +5,127 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Çınarcık Vardiya</title>
     
-    <!-- 1. STYLES -->
+    <!-- 1. STIL (Tailwind CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Modern Scrollbar */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        body { font-family: sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; background-color: #f8fafc; }
-        input, select { font-size: 16px !important; }
         
-        /* Error Box Style */
-        #error-box { display: none; position: fixed; top: 0; left: 0; width: 100%; padding: 20px; background: #fee2e2; color: #b91c1c; border-bottom: 2px solid #991b1b; z-index: 10000; font-family: monospace; }
+        /* App Behaviors */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            overscroll-behavior-y: none; 
+            background-color: #f8fafc;
+            user-select: none; /* App-like feel */
+        }
+        
+        /* Prevent Input Zoom on Mobile */
+        input, select, textarea { font-size: 16px !important; }
+        
+        /* Loading & Error Screens */
+        #loading-overlay {
+            position: fixed; inset: 0; background: white; z-index: 50;
+            display: flex; justify-content: center; align-items: center;
+            flex-direction: column; gap: 10px;
+        }
+        #error-overlay {
+            display: none; position: fixed; inset: 0; background: #fee2e2; z-index: 100;
+            padding: 20px; color: #991b1b; font-family: monospace; overflow: auto;
+        }
+        
+        /* Animations */
+        @keyframes fade-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
     </style>
 
-    <!-- 2. REACT LIBRARIES -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 2. REACT LIBRARIES (Stable Cloudflare CDN) -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     
     <!-- 3. EXPORT TOOLS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-    
-    <!-- Error Catcher Display -->
-    <div id="error-box"></div>
+
+    <!-- Loading Screen -->
+    <div id="loading-overlay">
+        <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div class="text-slate-600 font-medium">Uygulama Yükleniyor...</div>
+    </div>
+
+    <!-- Error Screen (Hidden by default) -->
+    <div id="error-overlay"></div>
+
+    <!-- React Root -->
     <div id="root" class="h-screen w-screen overflow-hidden flex flex-col"></div>
 
-    <!-- Error Handling Script -->
     <script>
+        // Global Error Handler
         window.onerror = function(msg, url, line, col, error) {
-            var box = document.getElementById('error-box');
-            box.style.display = 'block';
-            box.innerHTML = "<strong>HATA OLUŞTU (Lütfen sayfayı yenileyin):</strong><br>" + msg + "<br><small>" + line + ":" + col + "</small>";
+            document.getElementById('loading-overlay').style.display = 'none';
+            const errBox = document.getElementById('error-overlay');
+            errBox.style.display = 'block';
+            errBox.innerHTML = `<strong>HATA OLUŞTU:</strong><br>${msg}<br><small>${line}:${col}</small><br><br>Lütfen sayfayı yenileyin.`;
             return false;
         };
     </script>
 
-    <!-- MAIN APP SCRIPT -->
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
 
+        // --- CONSTANTS & ICONS ---
         const LOGO_URL = "https://raw.githubusercontent.com/Berahatiye/rose/refs/heads/main/rosecafelogo.webp";
 
-        // --- 1. ICONS (Fixed for React) ---
-        // Crucial: Used camelCase for attributes (strokeWidth, strokeLinecap) to prevent crashes
-        const IconChef = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>;
-        const IconImage = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
-        const IconPdf = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
-        const IconUsers = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
-        const IconTrash = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
-        const IconX = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
-        const IconChevronDown = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
-        const IconCheck = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
-        const IconChart = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>;
+        // Hand-coded SVGs to prevent dependency crashes
+        const Icons = {
+            Chef: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>,
+            Image: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
+            Pdf: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+            Users: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            Trash: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+            X: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            Chevron: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
+            Check: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+            Chart: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>,
+            Calendar: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        };
 
-        // --- 2. UTILITIES ---
+        // --- UTILITIES ---
         const safeJSONParse = (key, fallback) => {
             try {
                 const item = localStorage.getItem(key);
                 return item ? JSON.parse(item) : fallback;
-            } catch (e) {
-                return fallback;
-            }
+            } catch (e) { return fallback; }
+        };
+
+        const safeJSONSave = (key, value) => {
+            try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
         };
 
         const generateId = () => Math.random().toString(36).substr(2, 9);
         
+        // Manual Turkish Formatting
+        const TR_MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        const TR_DAYS = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+        const TR_MONTHS_SHORT = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+
         const formatDateTR = (dateStr) => {
             if (!dateStr) return '';
             const [year, month, day] = dateStr.split('-');
             return `${day}.${month}.${year}`;
+        };
+
+        const formatMonthTR = (isoMonth) => {
+            // isoMonth = "YYYY-MM"
+            if (!isoMonth) return "";
+            const [year, month] = isoMonth.split('-');
+            const monthIndex = parseInt(month, 10) - 1;
+            return `${TR_MONTHS[monthIndex]} ${year}`;
         };
 
         const getWeekDates = (startDateStr) => {
@@ -88,8 +136,8 @@
                 d.setDate(start.getDate() + i);
                 dates.push({
                     fullDate: d.toISOString().split('T')[0],
-                    displayDate: d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }),
-                    dayName: d.toLocaleDateString('tr-TR', { weekday: 'long' })
+                    displayDate: `${d.getDate()} ${TR_MONTHS_SHORT[d.getMonth()]}`, // Manual TR format
+                    dayName: TR_DAYS[d.getDay()] // Manual TR Format
                 });
             }
             return dates;
@@ -102,28 +150,25 @@
             return Math.max(0, h2 - h1);
         };
 
-        const defaultEmployees = [{ id: 'example', name: 'Örnek Personel', role: 'Garson' }];
-
-        // --- 3. COMPONENTS ---
+        // --- COMPONENTS ---
 
         const TimePicker = ({ label, value, onChange }) => {
-            const hour = value ? value.split(':')[0] : '12';
+            const hour = value ? value.split(':')[0] : '10';
             const hours = Array.from({ length: 25 }, (_, i) => i.toString().padStart(2, '0'));
-            const handleHourChange = (e) => onChange(`${e.target.value}:00`);
-
+            
             return (
                 <div className="flex-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">{label}</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">{label}</label>
                     <div className="relative w-full">
                         <select 
                             value={hour} 
-                            onChange={handleHourChange}
-                            className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-lg font-medium outline-none focus:border-orange-500 appearance-none text-center"
+                            onChange={(e) => onChange(`${e.target.value}:00`)}
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-bold outline-none focus:border-blue-500 appearance-none text-center text-slate-800"
                         >
                             {hours.map(h => <option key={h} value={h}>{h}:00</option>)}
                         </select>
-                        <div className="absolute right-3 top-3 pointer-events-none text-gray-400">
-                            <IconChevronDown />
+                        <div className="absolute right-3 top-4 pointer-events-none text-gray-400">
+                            <Icons.Chevron />
                         </div>
                     </div>
                 </div>
@@ -133,15 +178,15 @@
         const Modal = ({ isOpen, onClose, title, children, width = "max-w-sm" }) => {
             if (!isOpen) return null;
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4">
-                    <div className={`bg-white rounded-xl shadow-2xl w-full ${width} overflow-hidden flex flex-col max-h-[90vh]`}>
-                        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-gray-50">
-                            <h3 className="text-lg font-bold text-gray-800">{title}</h3>
-                            <button onClick={onClose} className="p-1 bg-gray-200 rounded-full text-gray-600 hover:bg-gray-300 transition-colors">
-                                <IconX />
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" style={{zIndex: 9999}}>
+                    <div className={`bg-white rounded-2xl shadow-2xl w-full ${width} overflow-hidden flex flex-col max-h-[90vh]`}>
+                        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-slate-50">
+                            <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+                            <button onClick={onClose} className="p-2 bg-white rounded-full text-slate-500 hover:bg-slate-100 transition-colors shadow-sm">
+                                <Icons.X />
                             </button>
                         </div>
-                        <div className="p-4 overflow-y-auto">
+                        <div className="p-5 overflow-y-auto">
                             {children}
                         </div>
                     </div>
@@ -153,39 +198,38 @@
             // --- STATE ---
             const [employees, setEmployees] = useState(() => {
                 const data = safeJSONParse('restoran_employees', null);
-                if (Array.isArray(data) && data.length > 0) return data;
-                return [{ id: 'example', name: 'Örnek Personel', role: 'Garson' }];
+                return (Array.isArray(data) && data.length > 0) ? data : [{ id: 'example', name: 'Örnek Personel', role: 'Garson' }];
             });
             
             const [weekStart, setWeekStart] = useState(() => {
                 const d = new Date();
-                const day = d.getDay();
-                const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                const day = d.getDay(); 
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
                 const monday = new Date(d.setDate(diff));
                 return monday.toISOString().split('T')[0];
             });
 
             const [shifts, setShifts] = useState(() => safeJSONParse('restoran_shifts', {}));
 
-            const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
-            const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
-            const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+            const [modals, setModals] = useState({ shift: false, team: false, report: false });
             const [activeCell, setActiveCell] = useState(null); 
             const [loading, setLoading] = useState(false);
             
-            const [editShiftData, setEditShiftData] = useState({ start: '10:00', end: '18:00', label: '', color: 'blue', isOff: false });
-            const [newEmployeeName, setNewEmployeeName] = useState('');
-            const [newEmployeeRole, setNewEmployeeRole] = useState('');
-            
+            const [editData, setEditData] = useState({ start: '10:00', end: '18:00', label: '', color: 'blue', isOff: false });
+            const [newEmp, setNewEmp] = useState({ name: '', role: '' });
             const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
+
+            // Refs for programmatic date opening
+            const weekInputRef = useRef(null);
+            const reportInputRef = useRef(null);
 
             // --- EFFECTS ---
             useEffect(() => { 
-                if(Array.isArray(employees)) localStorage.setItem('restoran_employees', JSON.stringify(employees)); 
-            }, [employees]);
-            useEffect(() => { 
-                if(shifts && typeof shifts === 'object') localStorage.setItem('restoran_shifts', JSON.stringify(shifts)); 
-            }, [shifts]);
+                document.getElementById('loading-overlay').style.display = 'none'; 
+            }, []);
+
+            useEffect(() => { if(Array.isArray(employees)) safeJSONSave('restoran_employees', employees); }, [employees]);
+            useEffect(() => { if(shifts) safeJSONSave('restoran_shifts', shifts); }, [shifts]);
 
             const weekDates = getWeekDates(weekStart);
             const getShift = (empId, date) => shifts[`${empId}_${date}`];
@@ -196,20 +240,13 @@
                 const daysInMonth = new Date(year, month, 0).getDate();
                 
                 return employees.filter(e => e.id !== 'example').map(emp => {
-                    let totalHours = 0;
-                    let totalShifts = 0;
-                    let totalOff = 0;
-
+                    let totalHours = 0, totalShifts = 0, totalOff = 0;
                     for (let d = 1; d <= daysInMonth; d++) {
                         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                         const shift = shifts[`${emp.id}_${dateStr}`];
                         if (shift) {
-                            if (shift.isOff) {
-                                totalOff++;
-                            } else {
-                                totalHours += calculateHours(shift.start, shift.end);
-                                totalShifts++;
-                            }
+                            if (shift.isOff) totalOff++;
+                            else { totalHours += calculateHours(shift.start, shift.end); totalShifts++; }
                         }
                     }
                     return { ...emp, totalHours, totalShifts, totalOff };
@@ -217,152 +254,183 @@
             }, [reportMonth, shifts, employees]);
 
             // --- HANDLERS ---
+            // Helper to open date picker reliably across browsers
+            const openWeekPicker = () => {
+                if (weekInputRef.current) {
+                    if (weekInputRef.current.showPicker) {
+                        weekInputRef.current.showPicker();
+                    } else {
+                        weekInputRef.current.click();
+                        weekInputRef.current.focus();
+                    }
+                }
+            };
+
+            const openReportPicker = () => {
+                if (reportInputRef.current) {
+                    if (reportInputRef.current.showPicker) {
+                        reportInputRef.current.showPicker();
+                    } else {
+                        reportInputRef.current.click();
+                        reportInputRef.current.focus();
+                    }
+                }
+            };
+
             const handleCellClick = (empId, date) => {
                 const currentShift = getShift(empId, date);
                 setActiveCell({ empId, date });
-                if (currentShift) {
-                    setEditShiftData({ ...currentShift, isOff: currentShift.isOff || false });
-                } else {
-                    setEditShiftData({ start: '10:00', end: '22:00', label: '', color: 'blue', isOff: false });
-                }
-                setIsShiftModalOpen(true);
+                if (currentShift) setEditData({ ...currentShift, isOff: currentShift.isOff || false });
+                else setEditData({ start: '10:00', end: '22:00', label: '', color: 'blue', isOff: false });
+                setModals({ ...modals, shift: true });
             };
 
-            const handleSaveShift = () => {
+            const saveShift = () => {
                 if (!activeCell) return;
                 const key = `${activeCell.empId}_${activeCell.date}`;
-                
-                const saveData = { ...editShiftData };
-                if (saveData.isOff) {
-                    saveData.color = 'red'; 
-                    if (!saveData.label) saveData.label = ''; 
-                }
-
-                setShifts(prev => ({ ...prev, [key]: saveData }));
-                setIsShiftModalOpen(false);
+                const data = { ...editData };
+                if (data.isOff) { data.color = 'red'; data.label = ''; }
+                setShifts(prev => ({ ...prev, [key]: data }));
+                setModals({ ...modals, shift: false });
             };
 
-            const handleDeleteShift = () => {
+            const deleteShift = () => {
                 if (!activeCell) return;
                 const key = `${activeCell.empId}_${activeCell.date}`;
-                setShifts(prev => {
-                    const next = { ...prev };
-                    delete next[key];
-                    return next;
-                });
-                setIsShiftModalOpen(false);
+                setShifts(prev => { const next = { ...prev }; delete next[key]; return next; });
+                setModals({ ...modals, shift: false });
             };
 
-            const handleAddEmployee = () => {
-                if (!newEmployeeName) return;
+            const addEmployee = () => {
+                if (!newEmp.name) return;
                 setEmployees(prev => {
-                    const realEmployees = prev.filter(e => e.id !== 'example');
-                    return [...realEmployees, { id: generateId(), name: newEmployeeName, role: newEmployeeRole || 'Personel' }];
+                    const clean = prev.filter(e => e.id !== 'example');
+                    return [...clean, { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel' }];
                 });
-                setNewEmployeeName('');
-                setNewEmployeeRole('');
+                setNewEmp({ name: '', role: '' });
             };
 
-            const handleRemoveEmployee = (id) => {
-                if (confirm('Silmek istediğinize emin misiniz?')) {
+            const removeEmployee = (id) => {
+                if (confirm('Bu personeli silmek istediğinizden emin misiniz?')) {
                     setEmployees(prev => prev.filter(e => e.id !== id));
                 }
             };
 
             // --- EXPORT FUNCTION ---
-            const exportToImage = async (elementId, filename) => {
+            const performExport = async (elementId, filename) => {
                 setLoading(true);
+                await new Promise(r => setTimeout(r, 100));
+                
                 const element = document.getElementById(elementId);
                 if(!element) { setLoading(false); return; }
 
-                const clone = element.cloneNode(true);
                 const container = document.createElement('div');
                 Object.assign(container.style, {
                     position: 'absolute', top: '-9999px', left: '0',
-                    width: '1200px', background: '#fff', padding: '30px',
-                    fontFamily: getComputedStyle(document.body).fontFamily
+                    width: '1200px', background: '#ffffff', padding: '40px',
+                    fontFamily: 'sans-serif', zIndex: '9999'
                 });
-                
-                const titleText = elementId === 'report-table-container' ? "Aylık Rapor" : "Çınarcık";
-                const dateText = elementId === 'report-table-container' ? reportMonth : formatDateTR(weekStart);
-                
-                const header = document.createElement('div');
-                header.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 25px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
-                        <img src="${LOGO_URL}" style="width: 80px; height: 80px; border-radius: 12px; object-fit: cover;" crossorigin="anonymous" />
+
+                const titleText = elementId === 'report-container' ? "Aylık Rapor" : "Çınarcık";
+                // FORCE TURKISH DATE FORMAT IN EXPORT HEADER
+                const dateText = elementId === 'report-container' ? formatMonthTR(reportMonth) : formatDateTR(weekStart);
+                const dateLabel = elementId === 'report-container' ? "Dönem" : "Tarih";
+
+                container.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 25px; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 25px;">
+                        <img src="${LOGO_URL}" style="width: 80px; height: 80px; border-radius: 15px; object-fit: cover; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);" crossorigin="anonymous" />
                         <div>
-                            <h1 style="font-size: 32px; font-weight: bold; margin: 0; color: #1e293b; line-height: 1.1;">${titleText}</h1>
-                            <p style="font-size: 14px; color: #64748b; margin: 5px 0 0 0;">Tarih: <strong style="color: #0f172a;">${dateText}</strong></p>
+                            <h1 style="font-size: 36px; font-weight: 800; margin: 0; color: #1e293b; line-height: 1;">${titleText}</h1>
+                            <p style="font-size: 16px; color: #64748b; margin: 8px 0 0 0; font-weight: 500;">${dateLabel}: <strong style="color: #0f172a;">${dateText}</strong></p>
                         </div>
-                    </div>`;
-                container.appendChild(header);
+                    </div>
+                `;
 
-                const table = clone.querySelector('table') || clone;
-                table.style.width = '100%';
-                table.querySelectorAll('*').forEach(el => {
+                // Tabloyu kopyala
+                const tableClone = element.querySelector('table').cloneNode(true);
+                tableClone.style.width = '100%';
+                tableClone.style.borderCollapse = 'collapse';
+                
+                tableClone.querySelectorAll('*').forEach(el => {
                     el.style.position = 'static'; el.style.overflow = 'visible'; el.style.transform = 'none';
-                    if (el.tagName === 'TH' || el.tagName === 'TD') {
-                        el.style.border = '1px solid #e2e8f0'; el.style.padding = '12px'; el.style.fontSize = '14px'; el.style.textAlign = 'center'; el.style.whiteSpace = 'normal';
+                    if(el.tagName === 'TH' || el.tagName === 'TD') {
+                        el.style.border = '1px solid #cbd5e1';
+                        el.style.padding = '12px';
+                        el.style.fontSize = '14px';
+                        el.style.textAlign = 'center';
+                        el.style.whiteSpace = 'normal';
                     }
-                    if(el.tagName === 'TD' && el.cellIndex === 0) el.style.textAlign = 'left';
+                    if(el.tagName === 'TH') { el.style.backgroundColor = '#f1f5f9'; el.style.color = '#334155'; }
+                    if(el.tagName === 'TD' && el.cellIndex === 0) { el.style.textAlign = 'left'; el.style.fontWeight = 'bold'; }
                 });
 
-                container.appendChild(table);
+                container.appendChild(tableClone);
                 document.body.appendChild(container);
-                await new Promise(r => setTimeout(r, 500));
 
                 try {
-                    const canvas = await html2canvas(container, { scale: 2, backgroundColor: "#fff", useCORS: true });
+                    // html2canvas ayarları
+                    const canvas = await html2canvas(container, { 
+                        scale: 2, 
+                        backgroundColor: "#ffffff", 
+                        useCORS: true,
+                        allowTaint: true
+                    });
                     document.body.removeChild(container);
-                    const link = document.createElement('a');
-                    link.download = filename + '.png';
-                    link.href = canvas.toDataURL("image/png");
-                    link.click();
-                } catch(e) { console.error(e); if(container.parentNode) document.body.removeChild(container); }
+                    
+                    if (filename.endsWith('.pdf')) {
+                        const { jsPDF } = window.jspdf;
+                        const imgData = canvas.toDataURL('image/png');
+                        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm' });
+                        const pdfW = pdf.internal.pageSize.getWidth();
+                        const pdfH = pdf.internal.pageSize.getHeight();
+                        const ratio = canvas.width / canvas.height;
+                        const printW = pdfW - 20;
+                        const printH = printW / ratio;
+                        
+                        pdf.addImage(imgData, 'PNG', 10, 10, printW, printH);
+                        pdf.save(filename);
+                    } else {
+                        const link = document.createElement('a');
+                        link.download = filename;
+                        link.href = canvas.toDataURL("image/png");
+                        link.click();
+                    }
+                } catch(e) {
+                    console.error(e);
+                    if(container.parentNode) document.body.removeChild(container);
+                    alert("Dışa aktarma hatası: " + e.message);
+                }
                 setLoading(false);
             };
 
-            const exportSchedule = () => exportToImage('schedule-table-container', `Vardiya_${weekStart}`);
-            const exportReport = () => exportToImage('report-table-container', `Rapor_${reportMonth}`);
-
-            // --- RENDER ---
-            const renderShiftCell = (emp, dateObj) => {
+            const renderCell = (emp, dateObj) => {
                 const shift = getShift(emp.id, dateObj.fullDate);
                 const isToday = new Date().toISOString().split('T')[0] === dateObj.fullDate;
-                let bgClass = isToday ? "bg-blue-50/50" : "bg-white";
-                let borderClass = "border-slate-100 border-b border-r";
                 
-                if (shift) {
-                    if (shift.isOff) {
-                        bgClass = "bg-red-50 border-red-100";
-                    } else {
-                        if (shift.color === 'blue') bgClass = "bg-blue-50 border-blue-200"; 
-                        if (shift.color === 'green') bgClass = "bg-emerald-50 border-emerald-200"; 
-                        if (shift.color === 'yellow') bgClass = "bg-amber-50 border-amber-200"; 
-                        if (shift.color === 'red') bgClass = "bg-rose-50 border-rose-200"; 
-                        if (shift.color === 'purple') bgClass = "bg-purple-50 border-purple-200";
-                    }
+                let bg = isToday ? 'bg-blue-50/60' : 'bg-white';
+                if(shift) {
+                    if(shift.isOff) bg = 'bg-red-50 border-red-100';
+                    else if(shift.color === 'blue') bg = 'bg-blue-50 border-blue-200';
+                    else if(shift.color === 'green') bg = 'bg-emerald-50 border-emerald-200';
+                    else if(shift.color === 'yellow') bg = 'bg-amber-50 border-amber-200';
+                    else if(shift.color === 'purple') bg = 'bg-purple-50 border-purple-200';
+                    else bg = 'bg-rose-50 border-rose-200';
                 }
 
                 return (
                     <td 
                         key={dateObj.fullDate} 
-                        onClick={() => handleCellClick(emp.id, dateObj.fullDate)}
-                        className={`p-1 ${borderClass} min-w-[105px] h-20 cursor-pointer relative ${bgClass} active:bg-gray-100 transition-colors tap-highlight-transparent`}
+                        onClick={() => openShiftModal(emp.id, dateObj.fullDate)}
+                        className={`p-1 border-r border-b border-slate-200 min-w-[100px] h-20 cursor-pointer relative ${bg} active:bg-gray-100 transition-colors`}
                     >
-                        {isToday && !shift && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-500"></div>}
+                        {isToday && !shift && <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500"></div>}
                         {shift ? (
                             <div className="flex flex-col h-full justify-center items-center text-center w-full">
                                 {shift.isOff ? (
-                                    <span className="font-bold text-red-600 text-sm">İZİN</span>
+                                    <span className="font-bold text-red-600 text-sm tracking-wide">İZİN</span>
                                 ) : (
                                     <>
-                                        <span className={`font-bold text-xs ${
-                                            shift.color === 'blue' ? 'text-blue-700' : 
-                                            shift.color === 'green' ? 'text-emerald-700' :
-                                            shift.color === 'yellow' ? 'text-amber-700' : 
-                                            shift.color === 'purple' ? 'text-purple-700' : 'text-rose-700'
-                                        }`}>
+                                        <span className={`font-bold text-xs ${shift.color === 'blue' ? 'text-blue-700' : shift.color === 'green' ? 'text-emerald-700' : shift.color === 'yellow' ? 'text-amber-700' : shift.color === 'purple' ? 'text-purple-700' : 'text-rose-700'}`}>
                                             {shift.start} - {shift.end}
                                         </span>
                                         {shift.label && <span className="text-[10px] text-gray-500 mt-0.5 leading-tight truncate w-full px-1">{shift.label}</span>}
@@ -370,9 +438,7 @@
                                 )}
                             </div>
                         ) : (
-                            <div className="h-full w-full flex items-center justify-center">
-                                <span className="text-slate-200 text-xl">+</span>
-                            </div>
+                            <div className="h-full w-full flex items-center justify-center opacity-0 hover:opacity-100 text-slate-300 font-light text-2xl">+</div>
                         )}
                     </td>
                 );
@@ -380,27 +446,43 @@
 
             return (
                 <div className="h-full flex flex-col bg-white">
-                    <header className="bg-white border-b border-slate-200 px-3 py-3 flex items-center justify-between shrink-0 z-30 shadow-sm">
+                    {/* Üst Bar */}
+                    <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 z-30 shadow-sm relative">
                         <div className="flex items-center gap-3 overflow-hidden">
-                            <img src={LOGO_URL} className="w-10 h-10 rounded-lg object-cover border border-slate-200" alt="Logo" crossOrigin="anonymous"/>
-                            <h1 className="text-lg font-bold text-slate-800 truncate">Çınarcık</h1>
+                            <img src={LOGO_URL} className="w-10 h-10 rounded-xl object-cover border border-slate-100 shadow-sm" alt="Logo" crossOrigin="anonymous"/>
+                            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Çınarcık</h1>
                         </div>
 
                         <div className="flex items-center gap-2">
-                             <div className="relative bg-slate-100 rounded-lg p-2 w-28 sm:w-32 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors">
-                                <span className="text-xs font-bold text-slate-700">{formatDateTR(weekStart)}</span>
-                                <input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"/>
+                            {/* Improved Date Picker with Click Trigger */}
+                            <div onClick={openWeekPicker} className="relative bg-slate-100 rounded-lg px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors group border border-slate-200 w-36 justify-center select-none">
+                                <span className="text-slate-500 group-hover:text-slate-700"><Icons.Calendar /></span>
+                                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{formatDateTR(weekStart)}</span>
+                                {/* Hidden Input with Ref */}
+                                <input 
+                                    ref={weekInputRef} 
+                                    type="date" 
+                                    value={weekStart} 
+                                    onChange={e => setWeekStart(e.target.value)} 
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" 
+                                    style={{visibility: 'hidden', position: 'absolute', top: 0, left: 0}} 
+                                />
                             </div>
                             
-                            <button onClick={() => setIsReportModalOpen(true)} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200" title="Aylık Rapor">
-                                <IconChart />
+                            <button onClick={() => setModals({...modals, report: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Raporlar">
+                                <Icons.Chart />
                             </button>
-                            <button onClick={() => setIsEmployeeModalOpen(true)} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200" title="Ekip">
-                                <IconUsers />
+                            <button onClick={() => setModals({...modals, team: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Ekip">
+                                <Icons.Users />
                             </button>
-                            <div className="flex bg-slate-100 rounded-lg p-0.5">
-                                <button onClick={exportSchedule} className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-white rounded-md transition-all">
-                                    {loading ? <span className="block w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></span> : <IconImage />}
+                            
+                            <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
+                                <button onClick={() => performExport('schedule-table-container', `Vardiya_${weekStart}.pdf`)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-white rounded-md transition-all">
+                                    {loading ? <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div> : <Icons.Pdf />}
+                                </button>
+                                <div className="w-px bg-slate-300 my-1"></div>
+                                <button onClick={() => performExport('schedule-table-container', `Vardiya_${weekStart}.png`)} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-md transition-all">
+                                    {loading ? <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div> : <Icons.Image />}
                                 </button>
                             </div>
                         </div>
@@ -412,159 +494,147 @@
                                 <table className="border-collapse w-full bg-white">
                                     <thead className="bg-slate-50 sticky top-0 z-20 shadow-sm">
                                         <tr>
-                                            <th className="p-2 text-left border-b border-r border-slate-200 min-w-[130px] sticky left-0 bg-slate-50 z-20">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Personel</span>
+                                            <th className="p-3 text-left border-b border-r border-slate-200 min-w-[140px] sticky left-0 bg-slate-50 z-20">
+                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Personel</span>
                                             </th>
                                             {weekDates.map(d => {
                                                 const isToday = new Date().toISOString().split('T')[0] === d.fullDate;
-                                                const headerBg = isToday ? "bg-blue-50" : "bg-slate-50";
-                                                const textColor = isToday ? "text-blue-600" : "text-slate-700";
                                                 return (
-                                                    <th key={d.fullDate} className={`p-2 text-center border-b border-slate-200 min-w-[105px] select-none ${headerBg}`}>
+                                                    <th key={d.fullDate} className={`p-2 text-center border-b border-slate-200 min-w-[105px] select-none ${isToday ? 'bg-blue-50' : ''}`}>
                                                         <div className="flex flex-col items-center">
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase truncate w-full">{d.dayName}</span>
-                                                            <span className={`text-xs font-bold ${textColor}`}>{d.displayDate}</span>
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase">{d.dayName}</span>
+                                                            <span className={`text-sm font-bold ${isToday ? 'text-blue-600' : 'text-slate-700'}`}>{d.displayDate}</span>
                                                         </div>
                                                     </th>
-                                                )
+                                                );
                                             })}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {employees.map(emp => (
-                                            <tr key={emp.id}>
-                                                <td className="p-3 border-r border-b border-slate-200 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                                    <div className="flex justify-between items-center">
-                                                        <div>
-                                                            <div className="font-semibold text-sm text-slate-800 leading-tight">{emp.name}</div>
-                                                            <div className="text-xs text-gray-500">{emp.role}</div>
-                                                        </div>
+                                            <tr key={emp.id} className="group">
+                                                <td className="p-3 border-r border-b border-slate-200 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                                    <div>
+                                                        <div className="font-bold text-sm text-slate-800">{emp.name}</div>
+                                                        <div className="text-[11px] text-slate-500">{emp.role}</div>
                                                     </div>
                                                 </td>
-                                                {weekDates.map(d => renderShiftCell(emp, d))}
+                                                {weekDates.map(d => renderCell(emp, d))}
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                                <div className="p-8 text-center text-slate-400 text-sm no-print">
-                                    {employees.length === 0 && "Personel eklemek için yukarıdaki kullanıcı ikonuna tıkla."}
+                                <div className="p-10 text-center text-slate-400 text-sm no-print">
+                                    {employees.length === 0 && "Başlamak için sağ üstteki 'Ekip' butonuna tıklayın."}
                                 </div>
                             </div>
                         </div>
                     </main>
 
-                    {/* EDIT MODAL */}
-                    <Modal isOpen={isShiftModalOpen} onClose={() => setIsShiftModalOpen(false)} title="Vardiya Düzenle">
-                        <div className="space-y-5">
-                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    {/* MODALLER */}
+                    
+                    <Modal isOpen={modals.shift} onClose={() => setModals({...modals, shift: false})} title="Vardiya Düzenle">
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
                                 <span className="text-sm font-bold text-slate-700">İzinli (OFF)</span>
-                                <button 
-                                    onClick={() => setEditShiftData(prev => ({...prev, isOff: !prev.isOff}))}
-                                    className={`relative w-12 h-6 rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${editShiftData.isOff ? 'bg-red-500' : 'bg-slate-300'}`}
-                                >
-                                    <span 
-                                        className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ease-in-out ${editShiftData.isOff ? 'translate-x-6' : 'translate-x-0'}`}
-                                    />
+                                <button onClick={() => setEditData(p => ({...p, isOff: !p.isOff}))} className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${editData.isOff ? 'bg-red-500' : 'bg-slate-300'}`}>
+                                    <span className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ${editData.isOff ? 'translate-x-6' : 'translate-x-0'}`}/>
                                 </button>
                             </div>
 
-                            {!editShiftData.isOff && (
+                            {!editData.isOff ? (
                                 <div className="space-y-5 animate-fade-in">
-                                    <div className="flex gap-3">
-                                        <TimePicker label="BAŞLANGIÇ" value={editShiftData.start} onChange={(v) => setEditShiftData({...editShiftData, start: v})} />
-                                        <TimePicker label="BİTİŞ" value={editShiftData.end} onChange={(v) => setEditShiftData({...editShiftData, end: v})} />
+                                    <div className="flex gap-4">
+                                        <TimePicker label="Başlangıç" value={editData.start} onChange={v => setEditData({...editData, start: v})} />
+                                        <TimePicker label="Bitiş" value={editData.end} onChange={v => setEditData({...editData, end: v})} />
                                     </div>
                                     <div>
-                                        <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Etiket</label>
-                                        <input type="text" value={editShiftData.label} onChange={e => setEditShiftData({...editShiftData, label: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:border-orange-500" placeholder="Not..." />
+                                        <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Etiket</label>
+                                        <input type="text" value={editData.label} onChange={e => setEditData({...editData, label: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-blue-500" placeholder="Örn: Kapanış, Hazırlık..." />
                                     </div>
                                     <div>
-                                        <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">Renk</label>
-                                        <div className="flex justify-between gap-3">
+                                        <label className="text-xs font-bold text-gray-500 uppercase mb-3 block">Renk</label>
+                                        <div className="flex justify-between">
                                             {['blue', 'green', 'yellow', 'purple', 'red'].map(c => (
-                                                <button key={c} onClick={() => setEditShiftData({...editShiftData, color: c})} className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${editShiftData.color === c ? 'scale-110 shadow-md ring-2 ring-offset-2 ring-gray-300' : 'opacity-80 hover:opacity-100'} ${c === 'blue' ? 'bg-blue-400' : c === 'green' ? 'bg-emerald-400' : c === 'yellow' ? 'bg-amber-400' : c === 'purple' ? 'bg-purple-400' : 'bg-rose-400'}`}>
-                                                    {editShiftData.color === c && <IconCheck className="text-white" />}
+                                                <button key={c} onClick={() => setEditData({...editData, color: c})} className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${editData.color === c ? 'scale-110 ring-2 ring-offset-2 ring-gray-300' : 'opacity-60'} ${c === 'blue' ? 'bg-blue-500' : c === 'green' ? 'bg-emerald-500' : c === 'yellow' ? 'bg-amber-500' : c === 'purple' ? 'bg-purple-500' : 'bg-rose-500'}`}>
+                                                    {editData.color === c && <div className="text-white"><Icons.Check /></div>}
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
                                 </div>
-                            )}
-
-                            {editShiftData.isOff && (
-                                <div className="p-4 bg-red-50 text-red-600 rounded-lg text-center text-sm font-medium border border-red-100">Bu gün personel izinli olarak işaretlenecek.</div>
+                            ) : (
+                                <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center text-sm font-medium border border-red-100">
+                                    Bu gün personel izinli sayılacaktır.
+                                </div>
                             )}
 
                             <div className="pt-2 flex gap-3">
-                                <button onClick={handleDeleteShift} className="flex-1 py-3 border border-red-100 text-red-500 rounded-xl font-medium active:bg-red-50">Sil</button>
-                                <button onClick={handleSaveShift} className="flex-[2] py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-200 active:scale-95 transition-transform">Kaydet</button>
+                                <button onClick={deleteShift} className="flex-1 py-3 text-red-500 font-bold bg-red-50 rounded-xl hover:bg-red-100 transition-colors">Sil</button>
+                                <button onClick={saveShift} className="flex-[2] py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200">Kaydet</button>
                             </div>
                         </div>
                     </Modal>
 
-                    {/* REPORT MODAL */}
-                    <Modal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} title="Aylık Rapor" width="max-w-lg">
+                    <Modal isOpen={modals.team} onClose={() => setModals({...modals, team: false})} title="Ekip Yönetimi">
                         <div className="space-y-6">
-                            <div className="flex justify-between items-center">
-                                <input type="month" value={reportMonth} onChange={(e) => setReportMonth(e.target.value)} className="p-2 border border-gray-300 rounded-lg text-sm font-bold text-slate-700 outline-none" />
-                                <button onClick={exportReport} className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700">
-                                    <IconImage /> Kaydet
-                                </button>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                                <input type="text" value={newEmp.name} onChange={e => setNewEmp({...newEmp, name: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Ad Soyad" />
+                                <input type="text" value={newEmp.role} onChange={e => setNewEmp({...newEmp, role: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Rol (Garson, vb.)" />
+                                <button onClick={addEmployee} disabled={!newEmp.name} className="w-full py-2 bg-blue-600 text-white font-bold rounded-lg disabled:opacity-50 hover:bg-blue-700 transition-colors">Ekle</button>
                             </div>
                             
-                            <div className="overflow-x-auto" id="report-table-container">
-                                <table className="w-full text-sm text-left text-slate-600">
-                                    <thead className="text-xs text-slate-700 uppercase bg-slate-50">
-                                        <tr>
-                                            <th className="px-4 py-3 rounded-tl-lg">Personel</th>
-                                            <th className="px-4 py-3 text-center">Toplam Saat</th>
-                                            <th className="px-4 py-3 text-center">Vardiya</th>
-                                            <th className="px-4 py-3 rounded-tr-lg text-center">İzin</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {reportData.length === 0 ? (
-                                            <tr><td colSpan="4" className="text-center p-4">Veri yok.</td></tr>
-                                        ) : reportData.map(d => (
-                                            <tr key={d.id} className="border-b border-slate-100 last:border-none">
-                                                <td className="px-4 py-3 font-medium text-slate-900">{d.name}</td>
-                                                <td className="px-4 py-3 text-center font-bold text-blue-600">{d.totalHours}</td>
-                                                <td className="px-4 py-3 text-center">{d.totalShifts}</td>
-                                                <td className="px-4 py-3 text-center text-red-500 font-medium">{d.totalOff}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </Modal>
-
-                    {/* EMPLOYEE MODAL */}
-                    <Modal isOpen={isEmployeeModalOpen} onClose={() => setIsEmployeeModalOpen(false)} title="Personel Yönetimi">
-                         <div className="space-y-4">
-                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                <div className="space-y-3">
-                                    <input type="text" value={newEmployeeName} onChange={e => setNewEmployeeName(e.target.value)} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-orange-500" placeholder="Ad Soyad" />
-                                    <input type="text" value={newEmployeeRole} onChange={e => setNewEmployeeRole(e.target.value)} className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-orange-500" placeholder="Rol (Garson, Komi, Kurye...)" />
-                                    <button onClick={handleAddEmployee} disabled={!newEmployeeName} className="w-full py-2 bg-slate-800 text-white rounded-lg text-sm font-medium disabled:opacity-50">Ekle</button>
-                                </div>
-                            </div>
-                            <div className="max-h-[40vh] overflow-y-auto">
-                                <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Liste</h4>
+                            <div className="max-h-60 overflow-y-auto pr-1">
+                                <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 ml-1">Mevcut Liste</h4>
                                 <ul className="space-y-2">
                                     {employees.map(e => (
-                                        <li key={e.id} className="flex justify-between items-center p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
+                                        <li key={e.id} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
                                             <div>
-                                                <div className="font-semibold text-sm text-gray-800">{e.name}</div>
-                                                <div className="text-xs text-gray-500">{e.role}</div>
+                                                <div className="font-bold text-sm text-slate-800">{e.name}</div>
+                                                <div className="text-xs text-slate-500">{e.role}</div>
                                             </div>
-                                            <button onClick={() => handleRemoveEmployee(e.id)} className="text-red-400 p-2"><IconTrash /></button>
+                                            <button onClick={() => removeEmployee(e.id)} className="text-red-400 p-2 hover:bg-red-50 rounded-full transition-colors"><Icons.Trash /></button>
                                         </li>
                                     ))}
                                 </ul>
                             </div>
                         </div>
                     </Modal>
+
+                    <Modal isOpen={modals.report} onClose={() => setModals({...modals, report: false})} title="Aylık Rapor" width="max-w-xl">
+                        <div id="report-container" className="space-y-6">
+                            <div onClick={openReportPicker} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl cursor-pointer hover:bg-slate-100 border border-slate-200">
+                                <div className="relative flex items-center gap-2">
+                                    <span className="text-slate-400"><Icons.Calendar /></span>
+                                    <span className="text-lg font-bold text-slate-700">{formatMonthTR(reportMonth)}</span>
+                                    <input ref={reportInputRef} type="month" value={reportMonth} onChange={e => setReportMonth(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" style={{visibility:'hidden'}} />
+                                </div>
+                                <button onClick={(e) => { e.stopPropagation(); performExport('report-container', `Rapor_${reportMonth}.png`); }} className="text-xs font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">Resim Olarak İndir</button>
+                            </div>
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-100">
+                                    <tr>
+                                        <th className="px-4 py-3 rounded-l-lg">Personel</th>
+                                        <th className="px-4 py-3 text-center">Saat</th>
+                                        <th className="px-4 py-3 text-center">Gün</th>
+                                        <th className="px-4 py-3 rounded-r-lg text-center">İzin</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {reportData.map(d => (
+                                        <tr key={d.id}>
+                                            <td className="px-4 py-3 font-bold text-slate-800">{d.name}</td>
+                                            <td className="px-4 py-3 text-center font-bold text-blue-600">{d.totalHours}</td>
+                                            <td className="px-4 py-3 text-center text-slate-600">{d.totalShifts}</td>
+                                            <td className="px-4 py-3 text-center text-red-500 font-bold">{d.totalOff}</td>
+                                        </tr>
+                                    ))}
+                                    {reportData.length === 0 && <tr><td colSpan="4" className="text-center p-4 text-slate-400">Veri bulunamadı.</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Modal>
+
                 </div>
             );
         };
