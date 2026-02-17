@@ -8,9 +8,9 @@
     <!-- 1. STYLES (Tailwind CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Modern Scrollbar */
+        /* Custom Scrollbar for cleaner look on mobile */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scroll::-webkit-scrollbar { height: 4px; width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         
@@ -23,37 +23,42 @@
             -webkit-tap-highlight-color: transparent;
         }
         
+        /* Prevent Input Zoom on iOS */
         input, select, textarea { font-size: 16px !important; }
         
-        /* Loading Screen */
-        #loading-overlay {
-            position: fixed; inset: 0; background: white; z-index: 9999;
-            display: flex; justify-content: center; align-items: center;
-            flex-direction: column; gap: 12px;
+        /* Smooth loading spinner */
+        .spinner {
+            width: 40px; height: 40px; 
+            border: 4px solid #e2e8f0; 
+            border-top: 4px solid #3b82f6; 
+            border-radius: 50%; 
+            animation: spin 1s linear infinite;
         }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        @keyframes fade-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-        .animate-fade-in { animation: fade-in 0.2s ease-out; }
+        /* Modal Animation */
+        @keyframes slide-up {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-up { animation: slide-up 0.3s ease-out; }
     </style>
 
-    <!-- 2. LIBRARIES (Stable Versions) -->
+    <!-- 2. LIBRARIES -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- 3. EXPORT TOOLS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
     <!-- Loading Screen -->
-    <div id="loading-overlay">
-        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-slate-500 font-bold text-sm">Çınarcık Yükleniyor...</p>
+    <div id="loading-overlay" class="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center">
+        <div class="spinner"></div>
+        <p class="mt-4 text-slate-500 font-bold text-sm">Yükleniyor...</p>
     </div>
 
-    <!-- React Root -->
     <div id="root" class="h-screen w-screen overflow-hidden flex flex-col"></div>
 
     <script>
@@ -61,7 +66,11 @@
         window.onerror = function(msg, url, line, col, error) {
             const overlay = document.getElementById('loading-overlay');
             if(overlay) {
-                overlay.innerHTML = `<div style="color:red;padding:20px;text-align:center"><strong>Hata:</strong><br>${msg}<br><button onclick="localStorage.clear();location.reload()" style="margin-top:10px;padding:8px 16px;background:#ef4444;color:white;border-radius:6px;font-weight:bold">Uygulamayı Sıfırla</button></div>`;
+                overlay.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">
+                    <h3 style="font-weight:bold; font-size:18px;">Hata Oluştu</h3>
+                    <p>${msg}</p>
+                    <button onclick="localStorage.clear();location.reload()" style="margin-top:15px; padding:10px 20px; background:#ef4444; color:white; border-radius:8px; font-weight:bold;">Uygulamayı Sıfırla</button>
+                </div>`;
             }
             return false;
         };
@@ -72,16 +81,16 @@
 
         const LOGO_URL = "https://raw.githubusercontent.com/Berahatiye/rose/refs/heads/main/rosecafelogo.webp";
 
-        // --- ICONS (Defined Globally for Stability) ---
-        const IconCalendar = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
-        const IconChart = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
-        const IconUsers = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-        const IconWallet = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
-        const IconPdf = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
-        const IconImage = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
-        const IconX = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
-        const IconTrash = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
-        const IconCheck = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+        // --- ICONS (Optimized for Mobile) ---
+        const IconCalendar = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+        const IconChart = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
+        const IconUsers = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+        const IconWallet = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
+        const IconPdf = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
+        const IconImage = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
+        const IconX = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+        const IconTrash = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+        const IconCheck = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
         const IconChevron = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>;
 
         // --- UTILS ---
@@ -100,13 +109,13 @@
         const generateId = () => Math.random().toString(36).substr(2, 9);
 
         const formatDateTR = (dateStr) => {
-            if(!dateStr) return "";
+            if (!dateStr) return "";
             const [y, m, d] = dateStr.split('-');
             return `${d}.${m}.${y}`;
         };
 
         const formatMonthTR = (isoMonth) => {
-            if(!isoMonth) return "";
+            if (!isoMonth) return "";
             const [y, m] = isoMonth.split('-');
             return `${TR_MONTHS[parseInt(m)-1]} ${y}`;
         };
@@ -114,7 +123,7 @@
         const getWeekDates = (startDate) => {
             const start = new Date(startDate);
             const dates = [];
-            for(let i=0; i<7; i++){
+            for (let i = 0; i < 7; i++) {
                 const d = new Date(start);
                 d.setDate(start.getDate() + i);
                 dates.push({
@@ -127,24 +136,29 @@
         };
 
         const calculateHours = (s, e) => {
-            if(!s || !e) return 0;
+            if (!s || !e) return 0;
             const h1 = parseInt(s.split(':')[0]);
             const h2 = parseInt(e.split(':')[0]);
+            // Handle overnight shifts if needed, simpler for now:
             return Math.max(0, h2 - h1);
         };
 
         const formatMoney = (amount) => {
-            return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount);
+            return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0 }).format(amount);
         };
 
-        // --- SUB-COMPONENTS ---
+        // --- COMPONENTS ---
 
         const TimeSelector = ({ value, onChange }) => {
             const hour = value ? value.split(':')[0] : '10';
             const hours = Array.from({length: 25}, (_, i) => i.toString().padStart(2, '0'));
             return (
                 <div className="relative w-full">
-                    <select value={hour} onChange={(e) => onChange(`${e.target.value}:00`)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-500 appearance-none text-slate-800">
+                    <select 
+                        value={hour} 
+                        onChange={(e) => onChange(`${e.target.value}:00`)} 
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center outline-none focus:ring-2 focus:ring-blue-500 appearance-none text-slate-800"
+                    >
                         {hours.map(h => <option key={h} value={h}>{h}:00</option>)}
                     </select>
                     <div className="absolute right-3 top-4 pointer-events-none text-gray-400"><IconChevron /></div>
@@ -158,13 +172,21 @@
             return (
                 <div className="flex gap-2 w-full">
                     <div className="relative flex-1">
-                        <select value={m} onChange={(e) => onChange(`${y}-${e.target.value}`)} className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700">
+                        <select 
+                            value={m} 
+                            onChange={(e) => onChange(`${y}-${e.target.value}`)} 
+                            className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500"
+                        >
                             {TR_MONTHS.map((mn, i) => <option key={i} value={String(i+1).padStart(2,'0')}>{mn}</option>)}
                         </select>
                         <div className="absolute right-2 top-3 pointer-events-none text-gray-400 w-3 h-3"><IconChevron /></div>
                     </div>
                     <div className="relative w-24">
-                        <select value={y} onChange={(e) => onChange(`${e.target.value}-${m}`)} className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700">
+                        <select 
+                            value={y} 
+                            onChange={(e) => onChange(`${e.target.value}-${m}`)} 
+                            className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500"
+                        >
                             {years.map(yr => <option key={yr} value={yr}>{yr}</option>)}
                         </select>
                         <div className="absolute right-2 top-3 pointer-events-none text-gray-400 w-3 h-3"><IconChevron /></div>
@@ -173,32 +195,37 @@
             );
         };
 
+        // Mobile-Optimized Modal
         const Modal = ({ isOpen, onClose, title, children, width="max-w-sm" }) => {
             if(!isOpen) return null;
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" style={{zIndex:9999}}>
-                    <div className={`bg-white rounded-2xl shadow-2xl w-full ${width} overflow-hidden flex flex-col max-h-[90vh]`}>
-                        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-slate-50">
+                    <div 
+                        className={`bg-white rounded-2xl shadow-2xl w-[95%] sm:w-full ${width} overflow-hidden flex flex-col max-h-[85vh]`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-slate-50 shrink-0">
                             <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-                            <button onClick={onClose} className="p-2 bg-white rounded-full hover:bg-slate-200 transition-colors"><IconX/></button>
+                            <button onClick={onClose} className="p-2 bg-white rounded-full hover:bg-slate-200 transition-colors border border-slate-100"><IconX/></button>
                         </div>
-                        <div className="p-5 overflow-y-auto">{children}</div>
+                        <div className="p-5 overflow-y-auto custom-scroll">
+                            {children}
+                        </div>
                     </div>
                 </div>
             );
         };
 
-        // --- MAIN APP ---
         const App = () => {
-            // State
+            // --- STATE ---
             const [employees, setEmployees] = useState(() => {
                 const data = safeJSONParse('restoran_employees', []);
                 return data.length ? data : [{ id: 'example', name: 'Örnek Personel', role: 'Garson' }];
             });
             const [weekStart, setWeekStart] = useState(() => {
                 const d = new Date();
-                const day = d.getDay();
-                const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                const day = d.getDay(); 
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
                 const monday = new Date(d.setDate(diff));
                 return monday.toISOString().split('T')[0];
             });
@@ -215,85 +242,106 @@
 
             const weekInputRef = useRef(null);
 
-            // Init
+            // --- EFFECTS ---
             useEffect(() => { 
                 const loader = document.getElementById('loading-overlay');
                 if(loader) loader.style.display = 'none'; 
             }, []);
-            
-            useEffect(() => safeJSONSave('restoran_employees', employees), [employees]);
-            useEffect(() => safeJSONSave('restoran_shifts', shifts), [shifts]);
-            useEffect(() => safeJSONSave('restoran_rates', rates), [rates]);
+
+            useEffect(() => { if(Array.isArray(employees)) safeJSONSave('restoran_employees', employees); }, [employees]);
+            useEffect(() => { if(shifts) safeJSONSave('restoran_shifts', shifts); }, [shifts]);
+            useEffect(() => { safeJSONSave('restoran_rates', rates), [rates]});
 
             const weekDates = getWeekDates(weekStart);
-            const getShift = (eid, date) => shifts[`${eid}_${date}`];
+            const getShift = (empId, date) => shifts[`${empId}_${date}`];
 
             const reportData = useMemo(() => {
                 if (!reportMonth) return [];
-                const [y, m] = reportMonth.split('-').map(Number);
-                const daysInMonth = new Date(y, m, 0).getDate();
+                const [year, month] = reportMonth.split('-').map(Number);
+                const daysInMonth = new Date(year, month, 0).getDate();
                 
                 return employees.filter(e => e.id !== 'example').map(emp => {
-                    let h=0, s=0, o=0;
-                    for(let d=1; d<=daysInMonth; d++){
-                        const date = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                        const sh = shifts[`${emp.id}_${date}`];
-                        if(sh){
-                            if(sh.isOff) o++;
-                            else { h += calculateHours(sh.start, sh.end); s++; }
+                    let totalHours = 0, totalShifts = 0, totalOff = 0;
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        const shift = shifts[`${emp.id}_${dateStr}`];
+                        if (shift) {
+                            if (shift.isOff) totalOff++;
+                            else { 
+                                totalHours += calculateHours(shift.start, shift.end); 
+                                totalShifts++; 
+                            }
                         }
                     }
-                    const r = rates[emp.id] || 0;
-                    return { ...emp, totalHours:h, totalShifts:s, totalOff:o, rate:r, salary:h*r };
+                    const rate = rates[emp.id] || 0;
+                    return { 
+                        ...emp, 
+                        totalHours, 
+                        totalShifts, 
+                        totalOff, 
+                        rate, 
+                        salary: totalHours * rate 
+                    };
                 });
             }, [reportMonth, shifts, employees, rates]);
 
-            const totalSalary = reportData.reduce((acc,c) => acc + c.salary, 0);
+            const totalSalaryPayout = reportData.reduce((acc, curr) => acc + curr.salary, 0);
 
-            // Handlers
+            // --- HANDLERS ---
             const openWeekPicker = () => {
-                if(weekInputRef.current) weekInputRef.current.showPicker ? weekInputRef.current.showPicker() : weekInputRef.current.click();
+                if (weekInputRef.current) {
+                    if (weekInputRef.current.showPicker) { weekInputRef.current.showPicker(); } 
+                    else { weekInputRef.current.click(); weekInputRef.current.focus(); }
+                }
             };
 
-            const handleCellClick = (eid, date) => {
-                const s = getShift(eid, date);
-                setActiveCell({ empId: eid, date });
-                setEditData(s ? {...s, isOff: s.isOff||false} : { start:'10:00', end:'22:00', label:'', color:'blue', isOff:false });
+            const handleCellClick = (empId, date) => {
+                const currentShift = getShift(empId, date);
+                setActiveCell({ empId, date });
+                if (currentShift) {
+                    setEditData({ ...currentShift, isOff: currentShift.isOff || false });
+                } else {
+                    setEditData({ start: '10:00', end: '22:00', label: '', color: 'blue', isOff: false });
+                }
                 setModals(prev => ({ ...prev, shift: true }));
             };
 
             const saveShift = () => {
-                const k = `${activeCell.empId}_${activeCell.date}`;
-                const d = { ...editData };
-                if(d.isOff) { d.color = 'red'; d.label = ''; }
-                setShifts(prev => ({ ...prev, [k]: d }));
+                if (!activeCell) return;
+                const key = `${activeCell.empId}_${activeCell.date}`;
+                const data = { ...editData };
+                if (data.isOff) { data.color = 'red'; data.label = ''; }
+                setShifts(prev => ({ ...prev, [key]: data }));
                 setModals(prev => ({ ...prev, shift: false }));
             };
 
             const deleteShift = () => {
-                const k = `${activeCell.empId}_${activeCell.date}`;
-                setShifts(prev => { const n = {...prev}; delete n[k]; return n; });
+                if (!activeCell) return;
+                const key = `${activeCell.empId}_${activeCell.date}`;
+                setShifts(prev => { const next = { ...prev }; delete next[key]; return next; });
                 setModals(prev => ({ ...prev, shift: false }));
             };
 
             const addEmployee = () => {
-                if(!newEmp.name) return;
+                if (!newEmp.name) return;
                 setEmployees(prev => {
                     const clean = prev.filter(e => e.id !== 'example');
                     return [...clean, { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel' }];
                 });
-                setNewEmp({name:'', role:''});
+                setNewEmp({ name: '', role: '' });
             };
 
             const removeEmployee = (id) => {
-                if(confirm('Silinsin mi?')) setEmployees(prev => prev.filter(e => e.id !== id));
+                if (confirm('Bu personeli silmek istediğinizden emin misiniz?')) {
+                    setEmployees(prev => prev.filter(e => e.id !== id));
+                }
             };
 
             const updateRate = (empId, val) => {
                 setRates(prev => ({ ...prev, [empId]: parseFloat(val) || 0 }));
             };
 
-            // Export Logic
+            // --- EXPORT FUNCTION ---
             const performExport = async (elementId, filename) => {
                 setLoading(true);
                 await new Promise(r => setTimeout(r, 200));
@@ -325,12 +373,10 @@
                     </div>
                 `;
 
-                // Clone Table
                 const tableClone = element.querySelector('table').cloneNode(true);
                 tableClone.style.width = '100%';
                 tableClone.style.borderCollapse = 'collapse';
                 
-                // FIX FOR SALARY INPUTS IN EXPORT
                 tableClone.querySelectorAll('input').forEach(input => {
                     const span = document.createElement('span');
                     span.innerText = input.value;
@@ -353,9 +399,6 @@
                 container.appendChild(tableClone);
                 document.body.appendChild(container);
 
-                // Wait for images
-                await new Promise(r => setTimeout(r, 300));
-
                 try {
                     const canvas = await html2canvas(container, { scale: 2, backgroundColor: "#ffffff", useCORS: true, allowTaint: true });
                     document.body.removeChild(container);
@@ -365,9 +408,9 @@
                         const imgData = canvas.toDataURL('image/png');
                         const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm' });
                         const pdfW = pdf.internal.pageSize.getWidth();
+                        const pdfH = pdf.internal.pageSize.getHeight();
                         const ratio = canvas.width / canvas.height;
-                        const printW = pdfW - 20;
-                        const printH = printW / ratio;
+                        const printW = pdfW - 20; const printH = printW / ratio;
                         pdf.addImage(imgData, 'PNG', 10, 10, printW, printH);
                         pdf.save(filename);
                     } else {
@@ -388,33 +431,45 @@
             const exportSalary = () => performExport('salary-container', `Maas_${reportMonth}.png`);
 
             const renderShiftCell = (emp, dateObj) => {
-                const s = getShift(emp.id, dateObj.fullDate);
+                const shift = getShift(emp.id, dateObj.fullDate);
                 const isToday = new Date().toISOString().split('T')[0] === dateObj.fullDate;
+                let bgClass = isToday ? "bg-blue-50/50" : "bg-white";
+                let borderClass = "border-slate-100 border-b border-r";
                 
-                let bg = isToday ? 'bg-blue-50/50' : 'bg-white';
-                if(s) {
-                    if(s.isOff) bg = 'bg-red-50 border-red-100';
-                    else if(s.color==='blue') bg='bg-blue-50 border-blue-200';
-                    else if(s.color==='green') bg='bg-emerald-50 border-emerald-200';
-                    else if(s.color==='yellow') bg='bg-amber-50 border-amber-200';
-                    else if(s.color==='red') bg='bg-rose-50 border-rose-200';
-                    else bg='bg-purple-50 border-purple-200';
+                if (shift) {
+                    if (shift.isOff) {
+                        bgClass = "bg-red-50 border-red-100";
+                    } else {
+                        if (shift.color === 'blue') bgClass = "bg-blue-50 border-blue-200"; 
+                        if (shift.color === 'green') bgClass = "bg-emerald-50 border-emerald-200"; 
+                        if (shift.color === 'yellow') bgClass = "bg-amber-50 border-amber-200"; 
+                        if (shift.color === 'red') bgClass = "bg-rose-50 border-rose-200"; 
+                        if (shift.color === 'purple') bgClass = "bg-purple-50 border-purple-200";
+                    }
                 }
 
                 return (
-                    <td key={dateObj.fullDate} onClick={() => handleCellClick(emp.id, dateObj.fullDate)} 
-                        className={`p-1 border-r border-b border-slate-200 min-w-[100px] h-20 cursor-pointer relative ${bg} active:bg-gray-100 transition-colors`}>
-                        {isToday && !s && <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500"/>}
-                        {s ? (
-                            <div className="flex flex-col h-full justify-center items-center w-full text-center">
-                                {s.isOff ? <span className="font-bold text-red-600 text-xs">İZİN</span> : 
-                                <>
-                                    <span className={`font-bold text-xs ${s.color==='blue'?'text-blue-700':s.color==='green'?'text-emerald-700':s.color==='yellow'?'text-amber-700':s.color==='purple'?'text-purple-700':'text-rose-700'}`}>{s.start}-{s.end}</span>
-                                    {s.label && <span className="text-[10px] text-gray-500 mt-0.5 truncate w-full px-1">{s.label}</span>}
-                                </>}
+                    <td 
+                        key={dateObj.fullDate} 
+                        onClick={() => handleCellClick(emp.id, dateObj.fullDate)}
+                        className={`p-1 ${borderClass} min-w-[105px] h-20 cursor-pointer relative ${bgClass} active:bg-gray-100 transition-colors tap-highlight-transparent`}
+                    >
+                        {isToday && !shift && <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500"></div>}
+                        {shift ? (
+                            <div className="flex flex-col h-full justify-center items-center text-center w-full">
+                                {shift.isOff ? (
+                                    <span className="font-bold text-red-600 text-sm tracking-wide">İZİN</span>
+                                ) : (
+                                    <>
+                                        <span className={`font-bold text-xs ${shift.color === 'blue' ? 'text-blue-700' : shift.color === 'green' ? 'text-emerald-700' : shift.color === 'yellow' ? 'text-amber-700' : shift.color === 'purple' ? 'text-purple-700' : 'text-rose-700'}`}>
+                                            {shift.start} - {shift.end}
+                                        </span>
+                                        {shift.label && <span className="text-[10px] text-gray-500 mt-0.5 leading-tight truncate w-full px-1">{shift.label}</span>}
+                                    </>
+                                )}
                             </div>
                         ) : (
-                            <div className="h-full w-full flex items-center justify-center opacity-0 hover:opacity-100 text-slate-300 text-xl">+</div>
+                            <div className="h-full w-full flex items-center justify-center opacity-0 hover:opacity-100 text-slate-300 font-light text-2xl">+</div>
                         )}
                     </td>
                 );
@@ -424,20 +479,32 @@
                 <div className="h-full flex flex-col bg-white">
                     <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 z-30 shadow-sm relative">
                         <div className="flex items-center gap-3 overflow-hidden">
-                            <img src={LOGO_URL} className="w-10 h-10 rounded-xl object-cover border border-slate-100" alt="Logo" crossorigin="anonymous"/>
+                            <img src={LOGO_URL} className="w-10 h-10 rounded-xl object-cover border border-slate-100 shadow-sm" alt="Logo" crossOrigin="anonymous"/>
                             <h1 className="text-lg font-bold text-slate-800 truncate">Çınarcık</h1>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div onClick={openWeekPicker} className="relative bg-slate-100 rounded-lg px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors w-32 justify-center select-none border border-slate-200">
+
+                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                            <div onClick={openWeekPicker} className="relative bg-slate-100 rounded-lg px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors border border-slate-200 shrink-0">
                                 <span className="text-slate-500"><IconCalendar /></span>
-                                <span className="text-xs font-bold text-slate-700">{formatDateTR(weekStart)}</span>
-                                <input ref={weekInputRef} type="date" value={weekStart} onChange={e => setWeekStart(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" style={{visibility:'hidden',position:'absolute',top:0,left:0}} />
+                                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{formatDateTR(weekStart)}</span>
+                                <input 
+                                    ref={weekInputRef} 
+                                    type="date" 
+                                    value={weekStart} 
+                                    onChange={e => setWeekStart(e.target.value)} 
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" 
+                                    style={{visibility: 'hidden', position: 'absolute', top: 0, left: 0}} 
+                                />
                             </div>
-                            <button onClick={() => setModals({...modals, salary:true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200" title="Maaş"><IconWallet /></button>
-                            <button onClick={() => setModals({...modals, report:true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200" title="Rapor"><IconChart /></button>
-                            <button onClick={() => setModals({...modals, team:true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200" title="Ekip"><IconUsers /></button>
-                            <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
-                                <button onClick={exportSchedule} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-white rounded-md transition-all">{loading ? <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"/> : <IconPdf />}</button>
+                            
+                            <button onClick={() => setModals({...modals, salary: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors shrink-0" title="Maaş Hesapla"><IconWallet /></button>
+                            <button onClick={() => setModals({...modals, report: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors shrink-0" title="Raporlar"><IconChart /></button>
+                            <button onClick={() => setModals({...modals, team: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors shrink-0" title="Ekip"><IconUsers /></button>
+                            
+                            <div className="flex bg-slate-100 rounded-lg p-1 gap-1 shrink-0">
+                                <button onClick={exportSchedule} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-white rounded-md transition-all">
+                                    {loading ? <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div> : <IconPdf />}
+                                </button>
                             </div>
                         </div>
                     </header>
@@ -448,31 +515,44 @@
                                 <table className="border-collapse w-full bg-white">
                                     <thead className="bg-slate-50 sticky top-0 z-20 shadow-sm">
                                         <tr>
-                                            <th className="p-3 text-left border-b border-r border-slate-200 min-w-[140px] sticky left-0 bg-slate-50 z-20"><span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Personel</span></th>
+                                            <th className="p-3 text-left border-b border-r border-slate-200 min-w-[140px] sticky left-0 bg-slate-50 z-20">
+                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Personel</span>
+                                            </th>
                                             {weekDates.map(d => {
                                                 const isToday = new Date().toISOString().split('T')[0] === d.fullDate;
-                                                return <th key={d.fullDate} className={`p-2 text-center border-b border-slate-200 min-w-[105px] select-none ${isToday?'bg-blue-50':''}`}><div className="flex flex-col items-center"><span className="text-[10px] font-bold text-slate-400 uppercase">{d.dayName}</span><span className={`text-sm font-bold ${isToday?'text-blue-600':'text-slate-700'}`}>{d.displayDate}</span></div></th>
+                                                return (
+                                                    <th key={d.fullDate} className={`p-2 text-center border-b border-slate-200 min-w-[105px] select-none ${isToday ? 'bg-blue-50' : ''}`}>
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase">{d.dayName}</span>
+                                                            <span className={`text-sm font-bold ${isToday ? 'text-blue-600' : 'text-slate-700'}`}>{d.displayDate}</span>
+                                                        </div>
+                                                    </th>
+                                                );
                                             })}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {employees.map(emp => (
                                             <tr key={emp.id} className="group">
-                                                <td className="p-3 border-r border-b border-slate-200 bg-white sticky left-0 z-10 shadow-sm">
-                                                    <div><div className="font-bold text-sm text-slate-800">{emp.name}</div><div className="text-[11px] text-slate-500">{emp.role}</div></div>
+                                                <td className="p-3 border-r border-b border-slate-200 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                                    <div>
+                                                        <div className="font-bold text-sm text-slate-800">{emp.name}</div>
+                                                        <div className="text-[11px] text-slate-500">{emp.role}</div>
+                                                    </div>
                                                 </td>
                                                 {weekDates.map(d => renderShiftCell(emp, d))}
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                                <div className="p-10 text-center text-slate-400 text-sm no-print">{employees.length === 0 && "Başlamak için sağ üstteki 'Ekip' butonuna tıklayın."}</div>
+                                <div className="p-10 text-center text-slate-400 text-sm no-print">
+                                    {employees.length === 0 && "Başlamak için sağ üstteki 'Ekip' butonuna tıklayın."}
+                                </div>
                             </div>
                         </div>
                     </main>
 
-                    {/* MODAL: SHIFT */}
-                    <Modal isOpen={modals.shift} onClose={() => setModals(p => ({...p, shift:false}))} title="Vardiya Düzenle">
+                    <Modal isOpen={modals.shift} onClose={() => setModals({...modals, shift: false})} title="Vardiya Düzenle">
                         <div className="space-y-6">
                             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
                                 <span className="text-sm font-bold text-slate-700">İzinli (OFF)</span>
@@ -480,44 +560,58 @@
                                     <span className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ${editData.isOff ? 'translate-x-6' : 'translate-x-0'}`}/>
                                 </button>
                             </div>
+
                             {!editData.isOff ? (
                                 <div className="space-y-5 animate-fade-in">
                                     <div className="flex gap-4">
                                         <TimeSelector label="BAŞLANGIÇ" value={editData.start} onChange={v => setEditData({...editData, start: v})} />
                                         <TimeSelector label="BİTİŞ" value={editData.end} onChange={v => setEditData({...editData, end: v})} />
                                     </div>
-                                    <div><label className="text-xs font-bold text-gray-500 block mb-1">Etiket</label><input type="text" value={editData.label} onChange={e => setEditData({...editData, label: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-sm font-bold outline-none focus:border-blue-500" placeholder="Örn: Kapanış..." /></div>
                                     <div>
-                                        <label className="text-xs font-bold text-slate-500 block mb-2">Renk</label>
+                                        <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Etiket</label>
+                                        <input type="text" value={editData.label} onChange={e => setEditData({...editData, label: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-blue-500" placeholder="Örn: Kapanış, Hazırlık..." />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 uppercase mb-3 block">Renk</label>
                                         <div className="flex justify-between">
                                             {['blue', 'green', 'yellow', 'purple', 'red'].map(c => (
-                                                <button key={c} onClick={() => setEditData({...editData, color: c})} className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${editData.color===c ? 'scale-110 ring-2 ring-offset-2 ring-gray-300' : 'opacity-60'} ${c==='blue'?'bg-blue-500':c==='green'?'bg-emerald-500':c==='yellow'?'bg-amber-500':c==='purple'?'bg-purple-500':'bg-rose-500'}`}>{editData.color === c && <div className="text-white"><IconCheck /></div>}</button>
+                                                <button key={c} onClick={() => setEditData({...editData, color: c})} className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${editData.color === c ? 'scale-110 ring-2 ring-offset-2 ring-gray-300' : 'opacity-60'} ${c === 'blue' ? 'bg-blue-500' : c === 'green' ? 'bg-emerald-500' : c === 'yellow' ? 'bg-amber-500' : c === 'purple' ? 'bg-purple-500' : 'bg-rose-500'}`}>
+                                                    {editData.color === c && <div className="text-white"><IconCheck /></div>}
+                                                </button>
                                             ))}
                                         </div>
                                     </div>
                                 </div>
-                            ) : <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center text-sm font-bold border border-red-100">Personel izinli sayılacaktır.</div>}
+                            ) : (
+                                <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center text-sm font-medium border border-red-100">
+                                    Bu gün personel izinli sayılacaktır.
+                                </div>
+                            )}
+
                             <div className="pt-2 flex gap-3">
-                                <button onClick={deleteShift} className="flex-1 py-3 text-red-500 font-bold bg-red-50 rounded-xl hover:bg-red-100">Sil</button>
-                                <button onClick={saveShift} className="flex-[2] py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 shadow-lg">Kaydet</button>
+                                <button onClick={deleteShift} className="flex-1 py-3 text-red-500 font-bold bg-red-50 rounded-xl hover:bg-red-100 transition-colors">Sil</button>
+                                <button onClick={saveShift} className="flex-[2] py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200">Kaydet</button>
                             </div>
                         </div>
                     </Modal>
 
-                    {/* MODAL: TEAM */}
-                    <Modal isOpen={modals.team} onClose={() => setModals(p => ({...p, team:false}))} title="Ekip Yönetimi">
+                    <Modal isOpen={modals.team} onClose={() => setModals({...modals, team: false})} title="Ekip Yönetimi">
                         <div className="space-y-6">
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                                <input type="text" value={newEmp.name} onChange={e => setNewEmp({...newEmp, name: e.target.value})} className="w-full p-3 bg-white border rounded-lg text-sm font-bold outline-none focus:border-blue-500" placeholder="Ad Soyad" />
-                                <input type="text" value={newEmp.role} onChange={e => setNewEmp({...newEmp, role: e.target.value})} className="w-full p-3 bg-white border rounded-lg text-sm font-bold outline-none focus:border-blue-500" placeholder="Rol" />
-                                <button onClick={addEmployee} disabled={!newEmp.name} className="w-full py-2 bg-blue-600 text-white font-bold rounded-lg disabled:opacity-50 hover:bg-blue-700">Ekle</button>
+                                <input type="text" value={newEmp.name} onChange={e => setNewEmp({...newEmp, name: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Ad Soyad" />
+                                <input type="text" value={newEmp.role} onChange={e => setNewEmp({...newEmp, role: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Rol (Garson, vb.)" />
+                                <button onClick={addEmployee} disabled={!newEmp.name} className="w-full py-2 bg-blue-600 text-white font-bold rounded-lg disabled:opacity-50 hover:bg-blue-700 transition-colors">Ekle</button>
                             </div>
                             <div className="max-h-60 overflow-y-auto pr-1">
+                                <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 ml-1">Mevcut Liste</h4>
                                 <ul className="space-y-2">
                                     {employees.map(e => (
                                         <li key={e.id} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
-                                            <div><div className="font-bold text-sm text-slate-800">{e.name}</div><div className="text-xs text-slate-500">{e.role}</div></div>
-                                            <button onClick={() => removeEmployee(e.id)} className="text-red-400 p-2 hover:bg-red-50 rounded-full"><IconTrash /></button>
+                                            <div>
+                                                <div className="font-bold text-sm text-slate-800">{e.name}</div>
+                                                <div className="text-xs text-slate-500">{e.role}</div>
+                                            </div>
+                                            <button onClick={() => removeEmployee(e.id)} className="text-red-400 p-2 hover:bg-red-50 rounded-full transition-colors"><IconTrash /></button>
                                         </li>
                                     ))}
                                 </ul>
@@ -525,41 +619,72 @@
                         </div>
                     </Modal>
 
-                    {/* MODAL: REPORT */}
-                    <Modal isOpen={modals.report} onClose={() => setModals(p => ({...p, report:false}))} title="Aylık Rapor" width="max-w-xl">
+                    <Modal isOpen={modals.report} onClose={() => setModals({...modals, report: false})} title="Aylık Rapor" width="max-w-xl">
                         <div id="report-container" className="space-y-6">
                             <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl">
                                 <MonthSelector value={reportMonth} onChange={setReportMonth} />
                                 <button onClick={exportReport} className="text-xs font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">Resim İndir</button>
                             </div>
                             <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-slate-500 uppercase bg-slate-100"><tr><th className="px-4 py-3 rounded-l-lg">Personel</th><th className="px-4 py-3 text-center">Saat</th><th className="px-4 py-3 text-center">Gün</th><th className="px-4 py-3 rounded-r-lg text-center">İzin</th></tr></thead>
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-100">
+                                    <tr>
+                                        <th className="px-4 py-3 rounded-l-lg">Personel</th>
+                                        <th className="px-4 py-3 text-center">Saat</th>
+                                        <th className="px-4 py-3 text-center">Gün</th>
+                                        <th className="px-4 py-3 rounded-r-lg text-center">İzin</th>
+                                    </tr>
+                                </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {reportData.map(d => <tr key={d.id}><td className="px-4 py-3 font-bold text-slate-800">{d.name}</td><td className="px-4 py-3 text-center font-bold text-blue-600">{d.totalHours}</td><td className="px-4 py-3 text-center text-slate-600">{d.totalShifts}</td><td className="px-4 py-3 text-center text-red-500 font-bold">{d.totalOff}</td></tr>)}
+                                    {reportData.map(d => (
+                                        <tr key={d.id}>
+                                            <td className="px-4 py-3 font-bold text-slate-800">{d.name}</td>
+                                            <td className="px-4 py-3 text-center font-bold text-blue-600">{d.totalHours}</td>
+                                            <td className="px-4 py-3 text-center text-slate-600">{d.totalShifts}</td>
+                                            <td className="px-4 py-3 text-center text-red-500 font-bold">{d.totalOff}</td>
+                                        </tr>
+                                    ))}
+                                    {reportData.length === 0 && <tr><td colSpan="4" className="text-center p-4 text-slate-400">Veri bulunamadı.</td></tr>}
                                 </tbody>
                             </table>
                         </div>
                     </Modal>
 
-                    {/* MODAL: SALARY */}
-                    <Modal isOpen={modals.salary} onClose={() => setModals(p => ({...p, salary:false}))} title="Maaş Hesaplama" width="max-w-2xl">
+                    <Modal isOpen={modals.salary} onClose={() => setModals({...modals, salary: false})} title="Maaş Hesaplama" width="max-w-2xl">
                         <div id="salary-container" className="space-y-6">
                             <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl">
                                 <MonthSelector value={reportMonth} onChange={setReportMonth} />
                                 <button onClick={exportSalary} className="text-xs font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">Resim İndir</button>
                             </div>
                             <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-slate-500 uppercase bg-slate-100"><tr><th className="px-4 py-3 rounded-l-lg">Personel</th><th className="px-4 py-3 text-center">Saat</th><th className="px-4 py-3 text-center">Saatlik (TL)</th><th className="px-4 py-3 rounded-r-lg text-right">Hakediş</th></tr></thead>
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-100">
+                                    <tr>
+                                        <th className="px-4 py-3 rounded-l-lg">Personel</th>
+                                        <th className="px-4 py-3 text-center">Toplam Saat</th>
+                                        <th className="px-4 py-3 text-center">Saatlik Ücret (TL)</th>
+                                        <th className="px-4 py-3 rounded-r-lg text-right">Hakediş</th>
+                                    </tr>
+                                </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {reportData.map(d => (
                                         <tr key={d.id}>
                                             <td className="px-4 py-3 font-bold text-slate-800">{d.name}</td>
                                             <td className="px-4 py-3 text-center text-slate-600">{d.totalHours}</td>
-                                            <td className="px-4 py-3 text-center"><input type="number" value={rates[d.id]||''} onChange={e => { const val = e.target.value; setRates(prev => ({...prev, [d.id]: val})); }} placeholder="0" className="w-20 p-1 text-center border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent font-bold"/></td>
+                                            <td className="px-4 py-3 text-center">
+                                                <input 
+                                                    type="number" 
+                                                    value={rates[d.id]||''} 
+                                                    onChange={(e) => updateRate(d.id, e.target.value)}
+                                                    placeholder="0"
+                                                    className="w-20 p-1 text-center border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent font-bold"
+                                                />
+                                            </td>
                                             <td className="px-4 py-3 text-right font-bold text-green-600">{formatMoney(d.salary)}</td>
                                         </tr>
                                     ))}
-                                    <tr className="bg-slate-50"><td colSpan="3" className="px-4 py-3 text-right font-bold text-slate-700">GENEL TOPLAM:</td><td className="px-4 py-3 text-right font-black text-green-700 text-lg">{formatMoney(totalSalary)}</td></tr>
+                                    <tr className="bg-slate-50">
+                                        <td colSpan="3" className="px-4 py-3 text-right font-bold text-slate-700">GENEL TOPLAM:</td>
+                                        <td className="px-4 py-3 text-right font-black text-green-700 text-lg">{formatMoney(totalSalaryPayout)}</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
