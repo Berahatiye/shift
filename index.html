@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Çınarcık Vardiya</title>
     
-    <!-- 1. STIL (Tailwind CSS) -->
+    <!-- 1. STYLES (Tailwind CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Modern Scrollbar */
@@ -19,13 +19,11 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             overscroll-behavior-y: none; 
             background-color: #f8fafc;
-            user-select: none; /* App-like feel */
+            user-select: none;
         }
         
-        /* Prevent Input Zoom on Mobile */
         input, select, textarea { font-size: 16px !important; }
         
-        /* Loading & Error Screens */
         #loading-overlay {
             position: fixed; inset: 0; background: white; z-index: 50;
             display: flex; justify-content: center; align-items: center;
@@ -36,36 +34,29 @@
             padding: 20px; color: #991b1b; font-family: monospace; overflow: auto;
         }
         
-        /* Animations */
         @keyframes fade-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
         .animate-fade-in { animation: fade-in 0.2s ease-out; }
     </style>
 
-    <!-- 2. REACT LIBRARIES (Stable Cloudflare CDN) -->
+    <!-- 2. LIBRARIES -->
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    
-    <!-- 3. EXPORT TOOLS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
-    <!-- Loading Screen -->
     <div id="loading-overlay">
         <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         <div class="text-slate-600 font-medium">Uygulama Yükleniyor...</div>
     </div>
 
-    <!-- Error Screen (Hidden by default) -->
     <div id="error-overlay"></div>
 
-    <!-- React Root -->
     <div id="root" class="h-screen w-screen overflow-hidden flex flex-col"></div>
 
     <script>
-        // Global Error Handler
         window.onerror = function(msg, url, line, col, error) {
             document.getElementById('loading-overlay').style.display = 'none';
             const errBox = document.getElementById('error-overlay');
@@ -78,10 +69,9 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
 
-        // --- CONSTANTS & ICONS ---
         const LOGO_URL = "https://raw.githubusercontent.com/Berahatiye/rose/refs/heads/main/rosecafelogo.webp";
 
-        // Hand-coded SVGs to prevent dependency crashes
+        // --- ICONS ---
         const Icons = {
             Chef: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>,
             Image: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
@@ -109,23 +99,15 @@
 
         const generateId = () => Math.random().toString(36).substr(2, 9);
         
-        // Manual Turkish Formatting
+        // Manual Translation Arrays (Strict Turkish)
         const TR_MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-        const TR_DAYS = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
         const TR_MONTHS_SHORT = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+        const TR_DAYS = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
         const formatDateTR = (dateStr) => {
             if (!dateStr) return '';
             const [year, month, day] = dateStr.split('-');
             return `${day}.${month}.${year}`;
-        };
-
-        const formatMonthTR = (isoMonth) => {
-            // isoMonth = "YYYY-MM"
-            if (!isoMonth) return "";
-            const [year, month] = isoMonth.split('-');
-            const monthIndex = parseInt(month, 10) - 1;
-            return `${TR_MONTHS[monthIndex]} ${year}`;
         };
 
         const getWeekDates = (startDateStr) => {
@@ -134,10 +116,16 @@
             for (let i = 0; i < 7; i++) {
                 const d = new Date(start);
                 d.setDate(start.getDate() + i);
+                
+                // Manual Formatting to Ensure Turkish
+                const dayIndex = d.getDay();
+                const monthIndex = d.getMonth();
+                const dayNum = d.getDate();
+                
                 dates.push({
                     fullDate: d.toISOString().split('T')[0],
-                    displayDate: `${d.getDate()} ${TR_MONTHS_SHORT[d.getMonth()]}`, // Manual TR format
-                    dayName: TR_DAYS[d.getDay()] // Manual TR Format
+                    displayDate: `${dayNum} ${TR_MONTHS_SHORT[monthIndex]}`,
+                    dayName: TR_DAYS[dayIndex]
                 });
             }
             return dates;
@@ -175,6 +163,51 @@
             );
         };
 
+        // Custom Turkish Month Selector (Replaces native <input type="month">)
+        const MonthPickerTR = ({ value, onChange }) => {
+            // value is "YYYY-MM"
+            const [year, month] = value.split('-');
+            const currentYear = new Date().getFullYear();
+            const years = Array.from({length: 5}, (_, i) => currentYear - 1 + i); // 5 year range
+
+            const handleMonthChange = (e) => {
+                const m = e.target.value;
+                onChange(`${year}-${m}`);
+            };
+
+            const handleYearChange = (e) => {
+                const y = e.target.value;
+                onChange(`${y}-${month}`);
+            };
+
+            return (
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <select 
+                            value={month} 
+                            onChange={handleMonthChange}
+                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold appearance-none text-slate-700 outline-none"
+                        >
+                            {TR_MONTHS.map((m, idx) => (
+                                <option key={idx} value={String(idx + 1).padStart(2, '0')}>{m}</option>
+                            ))}
+                        </select>
+                        <div className="absolute right-2 top-3 pointer-events-none text-gray-400 w-3 h-3"><Icons.Chevron /></div>
+                    </div>
+                    <div className="relative w-24">
+                        <select 
+                            value={year} 
+                            onChange={handleYearChange}
+                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold appearance-none text-slate-700 outline-none"
+                        >
+                            {years.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                        <div className="absolute right-2 top-3 pointer-events-none text-gray-400 w-3 h-3"><Icons.Chevron /></div>
+                    </div>
+                </div>
+            );
+        };
+
         const Modal = ({ isOpen, onClose, title, children, width = "max-w-sm" }) => {
             if (!isOpen) return null;
             return (
@@ -198,7 +231,8 @@
             // --- STATE ---
             const [employees, setEmployees] = useState(() => {
                 const data = safeJSONParse('restoran_employees', null);
-                return (Array.isArray(data) && data.length > 0) ? data : [{ id: 'example', name: 'Örnek Personel', role: 'Garson' }];
+                if (Array.isArray(data) && data.length > 0) return data;
+                return [{ id: 'example', name: 'Örnek Personel', role: 'Garson' }];
             });
             
             const [weekStart, setWeekStart] = useState(() => {
@@ -221,7 +255,6 @@
 
             // Refs for programmatic date opening
             const weekInputRef = useRef(null);
-            const reportInputRef = useRef(null);
 
             // --- EFFECTS ---
             useEffect(() => { 
@@ -262,17 +295,6 @@
                     } else {
                         weekInputRef.current.click();
                         weekInputRef.current.focus();
-                    }
-                }
-            };
-
-            const openReportPicker = () => {
-                if (reportInputRef.current) {
-                    if (reportInputRef.current.showPicker) {
-                        reportInputRef.current.showPicker();
-                    } else {
-                        reportInputRef.current.click();
-                        reportInputRef.current.focus();
                     }
                 }
             };
@@ -332,8 +354,11 @@
                 });
 
                 const titleText = elementId === 'report-container' ? "Aylık Rapor" : "Çınarcık";
-                // FORCE TURKISH DATE FORMAT IN EXPORT HEADER
-                const dateText = elementId === 'report-container' ? formatMonthTR(reportMonth) : formatDateTR(weekStart);
+                // Get month text manually from our array to ensure Turkish
+                const [rY, rM] = reportMonth.split('-');
+                const reportMonthText = `${TR_MONTHS[parseInt(rM)-1]} ${rY}`;
+                
+                const dateText = elementId === 'report-container' ? reportMonthText : formatDateTR(weekStart);
                 const dateLabel = elementId === 'report-container' ? "Dönem" : "Tarih";
 
                 container.innerHTML = `
@@ -346,7 +371,6 @@
                     </div>
                 `;
 
-                // Tabloyu kopyala
                 const tableClone = element.querySelector('table').cloneNode(true);
                 tableClone.style.width = '100%';
                 tableClone.style.borderCollapse = 'collapse';
@@ -368,7 +392,6 @@
                 document.body.appendChild(container);
 
                 try {
-                    // html2canvas ayarları
                     const canvas = await html2canvas(container, { 
                         scale: 2, 
                         backgroundColor: "#ffffff", 
@@ -403,25 +426,32 @@
                 setLoading(false);
             };
 
-            const renderCell = (emp, dateObj) => {
+            const exportSchedule = () => exportToImage('schedule-table-container', `Vardiya_${weekStart}`);
+            const exportReport = () => exportToImage('report-table-container', `Rapor_${reportMonth}`);
+
+            const renderShiftCell = (emp, dateObj) => {
                 const shift = getShift(emp.id, dateObj.fullDate);
                 const isToday = new Date().toISOString().split('T')[0] === dateObj.fullDate;
+                let bgClass = isToday ? "bg-blue-50/50" : "bg-white";
+                let borderClass = "border-slate-100 border-b border-r";
                 
-                let bg = isToday ? 'bg-blue-50/60' : 'bg-white';
-                if(shift) {
-                    if(shift.isOff) bg = 'bg-red-50 border-red-100';
-                    else if(shift.color === 'blue') bg = 'bg-blue-50 border-blue-200';
-                    else if(shift.color === 'green') bg = 'bg-emerald-50 border-emerald-200';
-                    else if(shift.color === 'yellow') bg = 'bg-amber-50 border-amber-200';
-                    else if(shift.color === 'purple') bg = 'bg-purple-50 border-purple-200';
-                    else bg = 'bg-rose-50 border-rose-200';
+                if (shift) {
+                    if (shift.isOff) {
+                        bgClass = "bg-red-50 border-red-100";
+                    } else {
+                        if (shift.color === 'blue') bgClass = "bg-blue-50 border-blue-200"; 
+                        if (shift.color === 'green') bgClass = "bg-emerald-50 border-emerald-200"; 
+                        if (shift.color === 'yellow') bgClass = "bg-amber-50 border-amber-200"; 
+                        if (shift.color === 'red') bgClass = "bg-rose-50 border-rose-200"; 
+                        if (shift.color === 'purple') bgClass = "bg-purple-50 border-purple-200";
+                    }
                 }
 
                 return (
                     <td 
                         key={dateObj.fullDate} 
                         onClick={() => openShiftModal(emp.id, dateObj.fullDate)}
-                        className={`p-1 border-r border-b border-slate-200 min-w-[100px] h-20 cursor-pointer relative ${bg} active:bg-gray-100 transition-colors`}
+                        className={`p-1 ${borderClass} min-w-[105px] h-20 cursor-pointer relative ${bgClass} active:bg-gray-100 transition-colors tap-highlight-transparent`}
                     >
                         {isToday && !shift && <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500"></div>}
                         {shift ? (
@@ -446,7 +476,6 @@
 
             return (
                 <div className="h-full flex flex-col bg-white">
-                    {/* Üst Bar */}
                     <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 z-30 shadow-sm relative">
                         <div className="flex items-center gap-3 overflow-hidden">
                             <img src={LOGO_URL} className="w-10 h-10 rounded-xl object-cover border border-slate-100 shadow-sm" alt="Logo" crossOrigin="anonymous"/>
@@ -454,11 +483,10 @@
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {/* Improved Date Picker with Click Trigger */}
+                            {/* Date Picker with Click Trigger */}
                             <div onClick={openWeekPicker} className="relative bg-slate-100 rounded-lg px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors group border border-slate-200 w-36 justify-center select-none">
                                 <span className="text-slate-500 group-hover:text-slate-700"><Icons.Calendar /></span>
                                 <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{formatDateTR(weekStart)}</span>
-                                {/* Hidden Input with Ref */}
                                 <input 
                                     ref={weekInputRef} 
                                     type="date" 
@@ -519,7 +547,7 @@
                                                         <div className="text-[11px] text-slate-500">{emp.role}</div>
                                                     </div>
                                                 </td>
-                                                {weekDates.map(d => renderCell(emp, d))}
+                                                {weekDates.map(d => renderShiftCell(emp, d))}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -603,13 +631,9 @@
 
                     <Modal isOpen={modals.report} onClose={() => setModals({...modals, report: false})} title="Aylık Rapor" width="max-w-xl">
                         <div id="report-container" className="space-y-6">
-                            <div onClick={openReportPicker} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl cursor-pointer hover:bg-slate-100 border border-slate-200">
-                                <div className="relative flex items-center gap-2">
-                                    <span className="text-slate-400"><Icons.Calendar /></span>
-                                    <span className="text-lg font-bold text-slate-700">{formatMonthTR(reportMonth)}</span>
-                                    <input ref={reportInputRef} type="month" value={reportMonth} onChange={e => setReportMonth(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" style={{visibility:'hidden'}} />
-                                </div>
-                                <button onClick={(e) => { e.stopPropagation(); performExport('report-container', `Rapor_${reportMonth}.png`); }} className="text-xs font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">Resim Olarak İndir</button>
+                            <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl">
+                                <MonthPickerTR value={reportMonth} onChange={setReportMonth} />
+                                <button onClick={() => performExport('report-container', `Rapor_${reportMonth}.png`)} className="text-xs font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">Resim Olarak İndir</button>
                             </div>
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-slate-500 uppercase bg-slate-100">
