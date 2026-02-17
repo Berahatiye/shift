@@ -8,9 +8,9 @@
     <!-- 1. STYLES (Tailwind CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom Scrollbar for cleaner look on mobile */
+        /* Modern Scrollbar */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .custom-scroll::-webkit-scrollbar { height: 4px; width: 4px; }
+        .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         
@@ -23,42 +23,36 @@
             -webkit-tap-highlight-color: transparent;
         }
         
-        /* Prevent Input Zoom on iOS */
         input, select, textarea { font-size: 16px !important; }
         
-        /* Smooth loading spinner */
-        .spinner {
-            width: 40px; height: 40px; 
-            border: 4px solid #e2e8f0; 
-            border-top: 4px solid #3b82f6; 
-            border-radius: 50%; 
-            animation: spin 1s linear infinite;
+        /* Loading Screen */
+        #loading-overlay {
+            position: fixed; inset: 0; background: white; z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            flex-direction: column; gap: 12px;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Modal Animation */
-        @keyframes slide-up {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .animate-slide-up { animation: slide-up 0.3s ease-out; }
+        @keyframes fade-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        .animate-fade-in { animation: fade-in 0.2s ease-out; }
     </style>
 
-    <!-- 2. LIBRARIES -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- 2. LIBRARIES (Stable Versions) -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    
+    <!-- 3. EXPORT TOOLS (Only html2canvas needed now) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
     <!-- Loading Screen -->
-    <div id="loading-overlay" class="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center">
-        <div class="spinner"></div>
-        <p class="mt-4 text-slate-500 font-bold text-sm">Yükleniyor...</p>
+    <div id="loading-overlay">
+        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-slate-500 font-bold text-sm">Yükleniyor...</p>
     </div>
 
+    <!-- React Root -->
     <div id="root" class="h-screen w-screen overflow-hidden flex flex-col"></div>
 
     <script>
@@ -66,11 +60,7 @@
         window.onerror = function(msg, url, line, col, error) {
             const overlay = document.getElementById('loading-overlay');
             if(overlay) {
-                overlay.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">
-                    <h3 style="font-weight:bold; font-size:18px;">Hata Oluştu</h3>
-                    <p>${msg}</p>
-                    <button onclick="localStorage.clear();location.reload()" style="margin-top:15px; padding:10px 20px; background:#ef4444; color:white; border-radius:8px; font-weight:bold;">Uygulamayı Sıfırla</button>
-                </div>`;
+                overlay.innerHTML = `<div style="color:red;padding:20px;text-align:center"><strong>Hata:</strong><br>${msg}<br><button onclick="localStorage.clear();location.reload()" style="margin-top:10px;padding:8px 16px;background:#ef4444;color:white;border-radius:6px;font-weight:bold">Uygulamayı Sıfırla</button></div>`;
             }
             return false;
         };
@@ -81,16 +71,15 @@
 
         const LOGO_URL = "https://raw.githubusercontent.com/Berahatiye/rose/refs/heads/main/rosecafelogo.webp";
 
-        // --- ICONS (Optimized for Mobile) ---
-        const IconCalendar = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
-        const IconChart = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
-        const IconUsers = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-        const IconWallet = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
-        const IconPdf = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
-        const IconImage = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
-        const IconX = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
-        const IconTrash = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
-        const IconCheck = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+        // --- ICONS ---
+        const IconCalendar = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+        const IconChart = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
+        const IconUsers = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+        const IconWallet = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
+        const IconImage = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
+        const IconX = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+        const IconTrash = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+        const IconCheck = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
         const IconChevron = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>;
 
         // --- UTILS ---
@@ -139,12 +128,11 @@
             if (!s || !e) return 0;
             const h1 = parseInt(s.split(':')[0]);
             const h2 = parseInt(e.split(':')[0]);
-            // Handle overnight shifts if needed, simpler for now:
             return Math.max(0, h2 - h1);
         };
 
         const formatMoney = (amount) => {
-            return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0 }).format(amount);
+            return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount);
         };
 
         // --- COMPONENTS ---
@@ -157,7 +145,7 @@
                     <select 
                         value={hour} 
                         onChange={(e) => onChange(`${e.target.value}:00`)} 
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center outline-none focus:ring-2 focus:ring-blue-500 appearance-none text-slate-800"
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-500 appearance-none text-slate-800"
                     >
                         {hours.map(h => <option key={h} value={h}>{h}:00</option>)}
                     </select>
@@ -175,7 +163,7 @@
                         <select 
                             value={m} 
                             onChange={(e) => onChange(`${y}-${e.target.value}`)} 
-                            className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500"
+                            className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700"
                         >
                             {TR_MONTHS.map((mn, i) => <option key={i} value={String(i+1).padStart(2,'0')}>{mn}</option>)}
                         </select>
@@ -185,7 +173,7 @@
                         <select 
                             value={y} 
                             onChange={(e) => onChange(`${e.target.value}-${m}`)} 
-                            className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500"
+                            className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700"
                         >
                             {years.map(yr => <option key={yr} value={yr}>{yr}</option>)}
                         </select>
@@ -195,22 +183,16 @@
             );
         };
 
-        // Mobile-Optimized Modal
         const Modal = ({ isOpen, onClose, title, children, width="max-w-sm" }) => {
             if(!isOpen) return null;
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" style={{zIndex:9999}}>
-                    <div 
-                        className={`bg-white rounded-2xl shadow-2xl w-[95%] sm:w-full ${width} overflow-hidden flex flex-col max-h-[85vh]`}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-slate-50 shrink-0">
+                    <div className={`bg-white rounded-2xl shadow-2xl w-full ${width} overflow-hidden flex flex-col max-h-[90vh]`}>
+                        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-slate-50">
                             <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-                            <button onClick={onClose} className="p-2 bg-white rounded-full hover:bg-slate-200 transition-colors border border-slate-100"><IconX/></button>
+                            <button onClick={onClose} className="p-2 bg-white rounded-full hover:bg-slate-200 transition-colors"><IconX/></button>
                         </div>
-                        <div className="p-5 overflow-y-auto custom-scroll">
-                            {children}
-                        </div>
+                        <div className="p-5 overflow-y-auto">{children}</div>
                     </div>
                 </div>
             );
@@ -341,7 +323,7 @@
                 setRates(prev => ({ ...prev, [empId]: parseFloat(val) || 0 }));
             };
 
-            // --- EXPORT FUNCTION ---
+            // --- EXPORT FUNCTION (Fixed for Responsiveness & 30+ Employees) ---
             const performExport = async (elementId, filename) => {
                 setLoading(true);
                 await new Promise(r => setTimeout(r, 200));
@@ -349,11 +331,14 @@
                 const element = document.getElementById(elementId);
                 if(!element) { setLoading(false); return; }
 
+                // Create a clone container for high-res snapshot.
+                // We use a fixed width (1400px) to ensure columns don't crunch.
+                // We use standard positioning off-screen.
                 const container = document.createElement('div');
                 Object.assign(container.style, {
                     position: 'absolute', top: '-9999px', left: '0',
-                    width: '1200px', background: '#ffffff', padding: '40px',
-                    fontFamily: 'sans-serif', zIndex: '9999'
+                    width: '1400px', background: '#ffffff', padding: '40px',
+                    fontFamily: 'sans-serif', zIndex: '9999', boxSizing: 'border-box'
                 });
 
                 let titleText = "Çınarcık";
@@ -365,7 +350,7 @@
 
                 container.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 25px; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 25px;">
-                        <img src="${LOGO_URL}" style="width: 80px; height: 80px; border-radius: 15px; object-fit: cover; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);" crossorigin="anonymous" />
+                        <img src="${LOGO_URL}" style="width: 80px; height: 80px; border-radius: 15px; object-fit: cover;" crossorigin="anonymous" />
                         <div>
                             <h1 style="font-size: 36px; font-weight: 800; margin: 0; color: #1e293b; line-height: 1;">${titleText}</h1>
                             <p style="font-size: 16px; color: #64748b; margin: 8px 0 0 0; font-weight: 500;">${dateLabel}: <strong style="color: #0f172a;">${dateText}</strong></p>
@@ -373,10 +358,12 @@
                     </div>
                 `;
 
+                // Clone Table
                 const tableClone = element.querySelector('table').cloneNode(true);
                 tableClone.style.width = '100%';
                 tableClone.style.borderCollapse = 'collapse';
                 
+                // Replace inputs with text for export visibility
                 tableClone.querySelectorAll('input').forEach(input => {
                     const span = document.createElement('span');
                     span.innerText = input.value;
@@ -385,8 +372,11 @@
                     input.parentNode.replaceChild(span, input);
                 });
 
+                // Normalize styles to remove scroll effects and Sticky positioning
                 tableClone.querySelectorAll('*').forEach(el => {
-                    el.style.position = 'static'; el.style.overflow = 'visible'; el.style.transform = 'none';
+                    el.style.position = 'static'; // Kills sticky
+                    el.style.overflow = 'visible'; // Kills scroll
+                    el.style.transform = 'none';
                     if(el.tagName === 'TH' || el.tagName === 'TD') {
                         el.style.border = '1px solid #cbd5e1'; el.style.padding = '12px'; 
                         el.style.fontSize = '14px'; el.style.textAlign = 'center';
@@ -400,25 +390,20 @@
                 document.body.appendChild(container);
 
                 try {
-                    const canvas = await html2canvas(container, { scale: 2, backgroundColor: "#ffffff", useCORS: true, allowTaint: true });
+                    const canvas = await html2canvas(container, { 
+                        scale: 2, 
+                        backgroundColor: "#ffffff", 
+                        useCORS: true, 
+                        allowTaint: true,
+                        width: 1400, // Force width to prevent crunching
+                        windowWidth: 1400
+                    });
                     document.body.removeChild(container);
                     
-                    if (filename.endsWith('.pdf')) {
-                        const { jsPDF } = window.jspdf;
-                        const imgData = canvas.toDataURL('image/png');
-                        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm' });
-                        const pdfW = pdf.internal.pageSize.getWidth();
-                        const pdfH = pdf.internal.pageSize.getHeight();
-                        const ratio = canvas.width / canvas.height;
-                        const printW = pdfW - 20; const printH = printW / ratio;
-                        pdf.addImage(imgData, 'PNG', 10, 10, printW, printH);
-                        pdf.save(filename);
-                    } else {
-                        const link = document.createElement('a');
-                        link.download = filename;
-                        link.href = canvas.toDataURL("image/png");
-                        link.click();
-                    }
+                    const link = document.createElement('a');
+                    link.download = filename;
+                    link.href = canvas.toDataURL("image/png");
+                    link.click();
                 } catch(e) {
                     console.error(e); if(container.parentNode) document.body.removeChild(container);
                     alert("Dışa aktarma hatası: " + e.message);
@@ -426,7 +411,7 @@
                 setLoading(false);
             };
 
-            const exportSchedule = () => performExport('schedule-table-container', `Vardiya_${weekStart}.pdf`);
+            const exportSchedule = () => performExport('schedule-table-container', `Vardiya_${weekStart}.png`);
             const exportReport = () => performExport('report-container', `Rapor_${reportMonth}.png`);
             const exportSalary = () => performExport('salary-container', `Maas_${reportMonth}.png`);
 
@@ -483,9 +468,9 @@
                             <h1 className="text-lg font-bold text-slate-800 truncate">Çınarcık</h1>
                         </div>
 
-                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                            <div onClick={openWeekPicker} className="relative bg-slate-100 rounded-lg px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors border border-slate-200 shrink-0">
-                                <span className="text-slate-500"><IconCalendar /></span>
+                        <div className="flex items-center gap-2">
+                            <div onClick={openWeekPicker} className="relative bg-slate-100 rounded-lg px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors group border border-slate-200 w-36 justify-center select-none">
+                                <span className="text-slate-500 group-hover:text-slate-700"><IconCalendar /></span>
                                 <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{formatDateTR(weekStart)}</span>
                                 <input 
                                     ref={weekInputRef} 
@@ -497,13 +482,13 @@
                                 />
                             </div>
                             
-                            <button onClick={() => setModals({...modals, salary: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors shrink-0" title="Maaş Hesapla"><IconWallet /></button>
-                            <button onClick={() => setModals({...modals, report: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors shrink-0" title="Raporlar"><IconChart /></button>
-                            <button onClick={() => setModals({...modals, team: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors shrink-0" title="Ekip"><IconUsers /></button>
+                            <button onClick={() => setModals({...modals, salary: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Maaş Hesapla"><IconWallet /></button>
+                            <button onClick={() => setModals({...modals, report: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Raporlar"><IconChart /></button>
+                            <button onClick={() => setModals({...modals, team: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Ekip"><IconUsers /></button>
                             
-                            <div className="flex bg-slate-100 rounded-lg p-1 gap-1 shrink-0">
-                                <button onClick={exportSchedule} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-white rounded-md transition-all">
-                                    {loading ? <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div> : <IconPdf />}
+                            <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
+                                <button onClick={exportSchedule} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-md transition-all">
+                                    {loading ? <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div> : <IconImage />}
                                 </button>
                             </div>
                         </div>
@@ -602,6 +587,7 @@
                                 <input type="text" value={newEmp.role} onChange={e => setNewEmp({...newEmp, role: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Rol (Garson, vb.)" />
                                 <button onClick={addEmployee} disabled={!newEmp.name} className="w-full py-2 bg-blue-600 text-white font-bold rounded-lg disabled:opacity-50 hover:bg-blue-700 transition-colors">Ekle</button>
                             </div>
+                            
                             <div className="max-h-60 overflow-y-auto pr-1">
                                 <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 ml-1">Mevcut Liste</h4>
                                 <ul className="space-y-2">
@@ -655,6 +641,7 @@
                                 <MonthSelector value={reportMonth} onChange={setReportMonth} />
                                 <button onClick={exportSalary} className="text-xs font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">Resim İndir</button>
                             </div>
+                            
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-slate-500 uppercase bg-slate-100">
                                     <tr>
