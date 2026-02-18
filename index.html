@@ -228,7 +228,7 @@
             });
             const [shifts, setShifts] = useState(() => safeJSONParse('restoran_shifts', {}));
             const [rates, setRates] = useState(() => safeJSONParse('restoran_rates', {}));
-            const [advances, setAdvances] = useState(() => safeJSONParse('restoran_advances', {})); // NEW STATE
+            const [advances, setAdvances] = useState(() => safeJSONParse('restoran_advances', {}));
             
             const [modals, setModals] = useState({ shift: false, team: false, report: false, salary: false });
             const [activeCell, setActiveCell] = useState(null); 
@@ -292,6 +292,8 @@
             }, [reportMonth, shifts, employees, rates, advances]);
 
             const totalSalaryPayout = reportData.reduce((acc, curr) => acc + curr.netSalary, 0);
+            const totalGross = reportData.reduce((acc, curr) => acc + curr.grossSalary, 0);
+            const totalAdvance = reportData.reduce((acc, curr) => acc + curr.advance, 0);
 
             // --- HANDLERS ---
             const openWeekPicker = () => {
@@ -393,13 +395,7 @@
                 // Replace inputs with text for export visibility
                 tableClone.querySelectorAll('input').forEach(input => {
                     const span = document.createElement('span');
-                    // Format money if it looks like a number input from rate/advance
-                    if (input.type === 'number') {
-                         // Simple check, or just use value
-                         span.innerText = input.value;
-                    } else {
-                        span.innerText = input.value;
-                    }
+                    span.innerText = input.value;
                     span.style.fontWeight = 'bold';
                     span.style.fontSize = '14px';
                     input.parentNode.replaceChild(span, input);
@@ -417,12 +413,6 @@
                     }
                     if(el.tagName === 'TH') { el.style.backgroundColor = '#f1f5f9'; el.style.color = '#334155'; }
                     if(el.tagName === 'TD' && el.cellIndex === 0) { el.style.textAlign = 'left'; el.style.fontWeight = 'bold'; }
-                    
-                    // Specific alignment for money columns in export
-                    if(el.tagName === 'TD' && (el.innerText.includes('₺') || el.innerText.match(/^\d+$/))) {
-                        // el.style.textAlign = 'right'; 
-                        // Keeping center for uniformity unless strictly needed
-                    }
                 });
 
                 container.appendChild(tableClone);
@@ -696,7 +686,7 @@
                                             <th className="px-3 py-2 text-center">Ücret/S</th>
                                             <th className="px-3 py-2 text-right">Hakediş</th>
                                             <th className="px-3 py-2 text-center">Avans</th>
-                                            <th className="px-3 py-2 rounded-r-lg text-right">Net Ödenecek</th>
+                                            <th className="px-3 py-2 rounded-r-lg text-right">Kalan</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -726,9 +716,11 @@
                                                 <td className="px-3 py-2 text-right font-bold text-green-600">{formatMoney(d.netSalary)}</td>
                                             </tr>
                                         ))}
-                                        <tr className="bg-slate-50">
-                                            <td colSpan="5" className="px-3 py-2 text-right font-bold text-slate-700">NET TOPLAM:</td>
-                                            <td className="px-3 py-2 text-right font-black text-green-700 text-lg">{formatMoney(totalSalaryPayout)}</td>
+                                        <tr className="bg-slate-50 font-bold text-slate-700">
+                                            <td colSpan="3" className="px-3 py-2 text-right">TOPLAM:</td>
+                                            <td className="px-3 py-2 text-right text-slate-600">{formatMoney(totalGross)}</td>
+                                            <td className="px-3 py-2 text-center text-red-500">{formatMoney(totalAdvance)}</td>
+                                            <td className="px-3 py-2 text-right text-green-700 font-black">{formatMoney(totalSalaryPayout)}</td>
                                         </tr>
                                     </tbody>
                                 </table>
