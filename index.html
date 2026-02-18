@@ -7,10 +7,21 @@
     
     <!-- 1. STYLES (Tailwind CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    screens: {
+                        'xxs': '320px',
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         /* Modern Scrollbar */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scroll::-webkit-scrollbar { height: 4px; width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         
@@ -23,6 +34,9 @@
             -webkit-tap-highlight-color: transparent;
         }
         
+        /* Prevent font scaling issues on iOS in landscape */
+        html { -webkit-text-size-adjust: 100%; }
+
         input, select, textarea { font-size: 16px !important; }
         
         /* Loading Screen */
@@ -36,12 +50,10 @@
         .animate-fade-in { animation: fade-in 0.2s ease-out; }
     </style>
 
-    <!-- 2. LIBRARIES (Stable Versions) -->
+    <!-- 2. LIBRARIES -->
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    
-    <!-- 3. EXPORT TOOLS (Only html2canvas needed now) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
@@ -72,10 +84,10 @@
         const LOGO_URL = "https://raw.githubusercontent.com/Berahatiye/rose/refs/heads/main/rosecafelogo.webp";
 
         // --- ICONS ---
-        const IconCalendar = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
-        const IconChart = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
-        const IconUsers = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-        const IconWallet = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
+        const IconCalendar = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+        const IconChart = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
+        const IconUsers = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+        const IconWallet = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
         const IconImage = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
         const IconX = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
         const IconTrash = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
@@ -137,19 +149,22 @@
 
         // --- COMPONENTS ---
 
-        const TimeSelector = ({ value, onChange }) => {
+        const TimeSelector = ({ value, onChange, label }) => {
             const hour = value ? value.split(':')[0] : '10';
             const hours = Array.from({length: 25}, (_, i) => i.toString().padStart(2, '0'));
             return (
                 <div className="relative w-full">
-                    <select 
-                        value={hour} 
-                        onChange={(e) => onChange(`${e.target.value}:00`)} 
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-500 appearance-none text-slate-800"
-                    >
-                        {hours.map(h => <option key={h} value={h}>{h}:00</option>)}
-                    </select>
-                    <div className="absolute right-3 top-4 pointer-events-none text-gray-400"><IconChevron /></div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">{label}</label>
+                    <div className="relative">
+                        <select 
+                            value={hour} 
+                            onChange={(e) => onChange(`${e.target.value}:00`)} 
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-500 appearance-none text-slate-800"
+                        >
+                            {hours.map(h => <option key={h} value={h}>{h}:00</option>)}
+                        </select>
+                        <div className="absolute right-3 top-3.5 pointer-events-none text-gray-400"><IconChevron /></div>
+                    </div>
                 </div>
             );
         };
@@ -158,41 +173,41 @@
             const [y, m] = value.split('-');
             const years = Array.from({length: 5}, (_, i) => new Date().getFullYear() - 2 + i);
             return (
-                <div className="flex gap-2 w-full">
+                <div className="flex gap-2 w-full max-w-[200px]">
                     <div className="relative flex-1">
                         <select 
                             value={m} 
                             onChange={(e) => onChange(`${y}-${e.target.value}`)} 
-                            className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700"
+                            className="w-full py-2 pl-2 pr-6 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700 text-sm"
                         >
                             {TR_MONTHS.map((mn, i) => <option key={i} value={String(i+1).padStart(2,'0')}>{mn}</option>)}
                         </select>
-                        <div className="absolute right-2 top-3 pointer-events-none text-gray-400 w-3 h-3"><IconChevron /></div>
+                        <div className="absolute right-2 top-2.5 pointer-events-none text-gray-400 w-3 h-3"><IconChevron /></div>
                     </div>
-                    <div className="relative w-24">
+                    <div className="relative w-20">
                         <select 
                             value={y} 
                             onChange={(e) => onChange(`${e.target.value}-${m}`)} 
-                            className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700"
+                            className="w-full py-2 pl-2 pr-6 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700 text-sm"
                         >
                             {years.map(yr => <option key={yr} value={yr}>{yr}</option>)}
                         </select>
-                        <div className="absolute right-2 top-3 pointer-events-none text-gray-400 w-3 h-3"><IconChevron /></div>
+                        <div className="absolute right-2 top-2.5 pointer-events-none text-gray-400 w-3 h-3"><IconChevron /></div>
                     </div>
                 </div>
             );
         };
 
-        const Modal = ({ isOpen, onClose, title, children, width="max-w-sm" }) => {
+        const Modal = ({ isOpen, onClose, title, children }) => {
             if(!isOpen) return null;
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" style={{zIndex:9999}}>
-                    <div className={`bg-white rounded-2xl shadow-2xl w-full ${width} overflow-hidden flex flex-col max-h-[90vh]`}>
-                        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-slate-50">
-                            <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-                            <button onClick={onClose} className="p-2 bg-white rounded-full hover:bg-slate-200 transition-colors"><IconX/></button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 animate-fade-in" style={{zIndex:9999}}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-sm overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="flex justify-between items-center p-3 border-b border-gray-100 bg-slate-50 shrink-0">
+                            <h3 className="text-base font-bold text-slate-800">{title}</h3>
+                            <button onClick={onClose} className="p-1.5 bg-white rounded-full hover:bg-slate-200 transition-colors"><IconX/></button>
                         </div>
-                        <div className="p-5 overflow-y-auto">{children}</div>
+                        <div className="p-4 overflow-y-auto custom-scroll">{children}</div>
                     </div>
                 </div>
             );
@@ -323,7 +338,7 @@
                 setRates(prev => ({ ...prev, [empId]: parseFloat(val) || 0 }));
             };
 
-            // --- EXPORT FUNCTION (Fixed for Responsiveness & 30+ Employees) ---
+            // --- EXPORT FUNCTION ---
             const performExport = async (elementId, filename) => {
                 setLoading(true);
                 await new Promise(r => setTimeout(r, 200));
@@ -332,8 +347,6 @@
                 if(!element) { setLoading(false); return; }
 
                 // Create a clone container for high-res snapshot.
-                // We use a fixed width (1400px) to ensure columns don't crunch.
-                // We use standard positioning off-screen.
                 const container = document.createElement('div');
                 Object.assign(container.style, {
                     position: 'absolute', top: '-9999px', left: '0',
@@ -372,10 +385,10 @@
                     input.parentNode.replaceChild(span, input);
                 });
 
-                // Normalize styles to remove scroll effects and Sticky positioning
+                // Normalize styles
                 tableClone.querySelectorAll('*').forEach(el => {
-                    el.style.position = 'static'; // Kills sticky
-                    el.style.overflow = 'visible'; // Kills scroll
+                    el.style.position = 'static'; 
+                    el.style.overflow = 'visible';
                     el.style.transform = 'none';
                     if(el.tagName === 'TH' || el.tagName === 'TD') {
                         el.style.border = '1px solid #cbd5e1'; el.style.padding = '12px'; 
@@ -395,7 +408,7 @@
                         backgroundColor: "#ffffff", 
                         useCORS: true, 
                         allowTaint: true,
-                        width: 1400, // Force width to prevent crunching
+                        width: 1400,
                         windowWidth: 1400
                     });
                     document.body.removeChild(container);
@@ -461,35 +474,38 @@
             };
 
             return (
-                <div className="h-full flex flex-col bg-white">
-                    <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 z-30 shadow-sm relative">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                            <img src={LOGO_URL} className="w-10 h-10 rounded-xl object-cover border border-slate-100 shadow-sm" alt="Logo" crossOrigin="anonymous"/>
-                            <h1 className="text-lg font-bold text-slate-800 truncate">Çınarcık</h1>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div onClick={openWeekPicker} className="relative bg-slate-100 rounded-lg px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors group border border-slate-200 w-36 justify-center select-none">
-                                <span className="text-slate-500 group-hover:text-slate-700"><IconCalendar /></span>
-                                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{formatDateTR(weekStart)}</span>
-                                <input 
-                                    ref={weekInputRef} 
-                                    type="date" 
-                                    value={weekStart} 
-                                    onChange={e => setWeekStart(e.target.value)} 
-                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" 
-                                    style={{visibility: 'hidden', position: 'absolute', top: 0, left: 0}} 
-                                />
+                <div className="h-full flex flex-col bg-white text-slate-900">
+                    <header className="bg-white border-b border-slate-200 p-2 z-30 shadow-sm relative shrink-0">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            {/* Logo Area */}
+                            <div className="flex items-center gap-2">
+                                <img src={LOGO_URL} className="w-9 h-9 rounded-xl object-cover border border-slate-100 shadow-sm" alt="Logo" crossOrigin="anonymous"/>
+                                <h1 className="text-base font-bold text-slate-800 leading-tight">Çınarcık<br/><span className="text-xs text-slate-500 font-normal">Vardiya</span></h1>
                             </div>
-                            
-                            <button onClick={() => setModals({...modals, salary: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Maaş Hesapla"><IconWallet /></button>
-                            <button onClick={() => setModals({...modals, report: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Raporlar"><IconChart /></button>
-                            <button onClick={() => setModals({...modals, team: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Ekip"><IconUsers /></button>
-                            
-                            <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
-                                <button onClick={exportSchedule} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-md transition-all">
-                                    {loading ? <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div> : <IconImage />}
-                                </button>
+
+                            {/* Controls - Wrap optimized for 260px */}
+                            <div className="flex items-center gap-1.5 flex-1 justify-end flex-wrap">
+                                <div onClick={openWeekPicker} className="relative bg-slate-50 rounded-lg px-2 py-1.5 flex items-center gap-1.5 cursor-pointer border border-slate-200 select-none min-w-[110px]">
+                                    <span className="text-slate-500"><IconCalendar /></span>
+                                    <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{formatDateTR(weekStart).slice(0,5)}</span>
+                                    <input 
+                                        ref={weekInputRef} 
+                                        type="date" 
+                                        value={weekStart} 
+                                        onChange={e => setWeekStart(e.target.value)} 
+                                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" 
+                                        style={{visibility: 'hidden', position: 'absolute', top: 0, left: 0}} 
+                                    />
+                                </div>
+                                
+                                <div className="flex gap-1">
+                                    <button onClick={() => setModals({...modals, salary: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Maaş"><IconWallet /></button>
+                                    <button onClick={() => setModals({...modals, report: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Rapor"><IconChart /></button>
+                                    <button onClick={() => setModals({...modals, team: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Ekip"><IconUsers /></button>
+                                    <button onClick={exportSchedule} className="p-2 text-slate-500 hover:text-blue-600 bg-slate-50 rounded-lg transition-all border border-transparent hover:border-slate-200">
+                                        {loading ? <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div> : <IconImage />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </header>
@@ -500,8 +516,8 @@
                                 <table className="border-collapse w-full bg-white">
                                     <thead className="bg-slate-50 sticky top-0 z-20 shadow-sm">
                                         <tr>
-                                            <th className="p-3 text-left border-b border-r border-slate-200 min-w-[140px] sticky left-0 bg-slate-50 z-20">
-                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Personel</span>
+                                            <th className="p-2 text-left border-b border-r border-slate-200 min-w-[100px] w-[100px] sm:w-[140px] sticky left-0 bg-slate-50 z-20">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Personel</span>
                                             </th>
                                             {weekDates.map(d => {
                                                 const isToday = new Date().toISOString().split('T')[0] === d.fullDate;
@@ -519,10 +535,10 @@
                                     <tbody>
                                         {employees.map(emp => (
                                             <tr key={emp.id} className="group">
-                                                <td className="p-3 border-r border-b border-slate-200 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                                                    <div>
-                                                        <div className="font-bold text-sm text-slate-800">{emp.name}</div>
-                                                        <div className="text-[11px] text-slate-500">{emp.role}</div>
+                                                <td className="p-2 border-r border-b border-slate-200 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] max-w-[100px] sm:max-w-[140px] overflow-hidden">
+                                                    <div className="truncate">
+                                                        <div className="font-bold text-sm text-slate-800 truncate">{emp.name}</div>
+                                                        <div className="text-[10px] text-slate-500 truncate">{emp.role}</div>
                                                     </div>
                                                 </td>
                                                 {weekDates.map(d => renderShiftCell(emp, d))}
@@ -530,37 +546,38 @@
                                         ))}
                                     </tbody>
                                 </table>
-                                <div className="p-10 text-center text-slate-400 text-sm no-print">
-                                    {employees.length === 0 && "Başlamak için sağ üstteki 'Ekip' butonuna tıklayın."}
+                                <div className="p-8 text-center text-slate-400 text-xs no-print">
+                                    {employees.length === 0 && "Başlamak için 'Ekip' butonuna tıklayın."}
                                 </div>
                             </div>
                         </div>
                     </main>
 
+                    {/* MODALS */}
                     <Modal isOpen={modals.shift} onClose={() => setModals({...modals, shift: false})} title="Vardiya Düzenle">
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                        <div className="space-y-5">
+                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
                                 <span className="text-sm font-bold text-slate-700">İzinli (OFF)</span>
-                                <button onClick={() => setEditData(p => ({...p, isOff: !p.isOff}))} className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${editData.isOff ? 'bg-red-500' : 'bg-slate-300'}`}>
-                                    <span className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ${editData.isOff ? 'translate-x-6' : 'translate-x-0'}`}/>
+                                <button onClick={() => setEditData(p => ({...p, isOff: !p.isOff}))} className={`relative w-10 h-6 rounded-full transition-colors duration-200 ${editData.isOff ? 'bg-red-500' : 'bg-slate-300'}`}>
+                                    <span className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ${editData.isOff ? 'translate-x-4' : 'translate-x-0'}`}/>
                                 </button>
                             </div>
 
                             {!editData.isOff ? (
-                                <div className="space-y-5 animate-fade-in">
-                                    <div className="flex gap-4">
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="flex flex-col xs:flex-row gap-3">
                                         <TimeSelector label="BAŞLANGIÇ" value={editData.start} onChange={v => setEditData({...editData, start: v})} />
                                         <TimeSelector label="BİTİŞ" value={editData.end} onChange={v => setEditData({...editData, end: v})} />
                                     </div>
                                     <div>
-                                        <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Etiket</label>
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Etiket</label>
                                         <input type="text" value={editData.label} onChange={e => setEditData({...editData, label: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-blue-500" placeholder="Örn: Kapanış, Hazırlık..." />
                                     </div>
                                     <div>
-                                        <label className="text-xs font-bold text-gray-500 uppercase mb-3 block">Renk</label>
-                                        <div className="flex justify-between">
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-2 block">Renk</label>
+                                        <div className="flex justify-between gap-1 overflow-x-auto pb-1">
                                             {['blue', 'green', 'yellow', 'purple', 'red'].map(c => (
-                                                <button key={c} onClick={() => setEditData({...editData, color: c})} className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${editData.color === c ? 'scale-110 ring-2 ring-offset-2 ring-gray-300' : 'opacity-60'} ${c === 'blue' ? 'bg-blue-500' : c === 'green' ? 'bg-emerald-500' : c === 'yellow' ? 'bg-amber-500' : c === 'purple' ? 'bg-purple-500' : 'bg-rose-500'}`}>
+                                                <button key={c} onClick={() => setEditData({...editData, color: c})} className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-transform ${editData.color === c ? 'scale-110 ring-2 ring-offset-2 ring-gray-300' : 'opacity-60'} ${c === 'blue' ? 'bg-blue-500' : c === 'green' ? 'bg-emerald-500' : c === 'yellow' ? 'bg-amber-500' : c === 'purple' ? 'bg-purple-500' : 'bg-rose-500'}`}>
                                                     {editData.color === c && <div className="text-white"><IconCheck /></div>}
                                                 </button>
                                             ))}
@@ -574,28 +591,28 @@
                             )}
 
                             <div className="pt-2 flex gap-3">
-                                <button onClick={deleteShift} className="flex-1 py-3 text-red-500 font-bold bg-red-50 rounded-xl hover:bg-red-100 transition-colors">Sil</button>
-                                <button onClick={saveShift} className="flex-[2] py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200">Kaydet</button>
+                                <button onClick={deleteShift} className="flex-1 py-3 text-red-500 font-bold bg-red-50 rounded-xl hover:bg-red-100 transition-colors text-sm">Sil</button>
+                                <button onClick={saveShift} className="flex-[2] py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200 text-sm">Kaydet</button>
                             </div>
                         </div>
                     </Modal>
 
                     <Modal isOpen={modals.team} onClose={() => setModals({...modals, team: false})} title="Ekip Yönetimi">
-                        <div className="space-y-6">
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                                <input type="text" value={newEmp.name} onChange={e => setNewEmp({...newEmp, name: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Ad Soyad" />
-                                <input type="text" value={newEmp.role} onChange={e => setNewEmp({...newEmp, role: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Rol (Garson, vb.)" />
-                                <button onClick={addEmployee} disabled={!newEmp.name} className="w-full py-2 bg-blue-600 text-white font-bold rounded-lg disabled:opacity-50 hover:bg-blue-700 transition-colors">Ekle</button>
+                        <div className="space-y-4">
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
+                                <input type="text" value={newEmp.name} onChange={e => setNewEmp({...newEmp, name: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Ad Soyad" />
+                                <input type="text" value={newEmp.role} onChange={e => setNewEmp({...newEmp, role: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Rol (Garson, vb.)" />
+                                <button onClick={addEmployee} disabled={!newEmp.name} className="w-full py-2.5 bg-blue-600 text-white font-bold rounded-lg disabled:opacity-50 hover:bg-blue-700 transition-colors text-sm">Ekle</button>
                             </div>
                             
-                            <div className="max-h-60 overflow-y-auto pr-1">
-                                <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 ml-1">Mevcut Liste</h4>
+                            <div className="max-h-52 overflow-y-auto pr-1">
+                                <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1">Mevcut Liste</h4>
                                 <ul className="space-y-2">
                                     {employees.map(e => (
-                                        <li key={e.id} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
-                                            <div>
-                                                <div className="font-bold text-sm text-slate-800">{e.name}</div>
-                                                <div className="text-xs text-slate-500">{e.role}</div>
+                                        <li key={e.id} className="flex justify-between items-center p-2.5 bg-white border border-slate-100 rounded-xl shadow-sm">
+                                            <div className="overflow-hidden">
+                                                <div className="font-bold text-sm text-slate-800 truncate">{e.name}</div>
+                                                <div className="text-xs text-slate-500 truncate">{e.role}</div>
                                             </div>
                                             <button onClick={() => removeEmployee(e.id)} className="text-red-400 p-2 hover:bg-red-50 rounded-full transition-colors"><IconTrash /></button>
                                         </li>
@@ -605,75 +622,79 @@
                         </div>
                     </Modal>
 
-                    <Modal isOpen={modals.report} onClose={() => setModals({...modals, report: false})} title="Aylık Rapor" width="max-w-xl">
-                        <div id="report-container" className="space-y-6">
-                            <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl">
+                    <Modal isOpen={modals.report} onClose={() => setModals({...modals, report: false})} title="Aylık Rapor">
+                        <div id="report-container" className="space-y-4">
+                            <div className="flex flex-col xs:flex-row gap-3 justify-between items-start xs:items-center bg-slate-50 p-3 rounded-xl">
                                 <MonthSelector value={reportMonth} onChange={setReportMonth} />
-                                <button onClick={exportReport} className="text-xs font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">Resim İndir</button>
+                                <button onClick={exportReport} className="text-xs font-bold bg-slate-800 text-white px-3 py-2 rounded-lg hover:bg-slate-700 w-full xs:w-auto">İndir</button>
                             </div>
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-slate-500 uppercase bg-slate-100">
-                                    <tr>
-                                        <th className="px-4 py-3 rounded-l-lg">Personel</th>
-                                        <th className="px-4 py-3 text-center">Saat</th>
-                                        <th className="px-4 py-3 text-center">Gün</th>
-                                        <th className="px-4 py-3 rounded-r-lg text-center">İzin</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {reportData.map(d => (
-                                        <tr key={d.id}>
-                                            <td className="px-4 py-3 font-bold text-slate-800">{d.name}</td>
-                                            <td className="px-4 py-3 text-center font-bold text-blue-600">{d.totalHours}</td>
-                                            <td className="px-4 py-3 text-center text-slate-600">{d.totalShifts}</td>
-                                            <td className="px-4 py-3 text-center text-red-500 font-bold">{d.totalOff}</td>
+                            <div className="overflow-x-auto pb-2">
+                                <table className="w-full text-sm text-left whitespace-nowrap">
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-100">
+                                        <tr>
+                                            <th className="px-3 py-2 rounded-l-lg">Personel</th>
+                                            <th className="px-3 py-2 text-center">Saat</th>
+                                            <th className="px-3 py-2 text-center">Gün</th>
+                                            <th className="px-3 py-2 rounded-r-lg text-center">İzin</th>
                                         </tr>
-                                    ))}
-                                    {reportData.length === 0 && <tr><td colSpan="4" className="text-center p-4 text-slate-400">Veri bulunamadı.</td></tr>}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {reportData.map(d => (
+                                            <tr key={d.id}>
+                                                <td className="px-3 py-2 font-bold text-slate-800">{d.name}</td>
+                                                <td className="px-3 py-2 text-center font-bold text-blue-600">{d.totalHours}</td>
+                                                <td className="px-3 py-2 text-center text-slate-600">{d.totalShifts}</td>
+                                                <td className="px-3 py-2 text-center text-red-500 font-bold">{d.totalOff}</td>
+                                            </tr>
+                                        ))}
+                                        {reportData.length === 0 && <tr><td colSpan="4" className="text-center p-4 text-slate-400">Veri bulunamadı.</td></tr>}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </Modal>
 
-                    <Modal isOpen={modals.salary} onClose={() => setModals({...modals, salary: false})} title="Maaş Hesaplama" width="max-w-2xl">
-                        <div id="salary-container" className="space-y-6">
-                            <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl">
+                    <Modal isOpen={modals.salary} onClose={() => setModals({...modals, salary: false})} title="Maaş Hesaplama">
+                        <div id="salary-container" className="space-y-4">
+                            <div className="flex flex-col xs:flex-row gap-3 justify-between items-start xs:items-center bg-slate-50 p-3 rounded-xl">
                                 <MonthSelector value={reportMonth} onChange={setReportMonth} />
-                                <button onClick={exportSalary} className="text-xs font-bold bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">Resim İndir</button>
+                                <button onClick={exportSalary} className="text-xs font-bold bg-slate-800 text-white px-3 py-2 rounded-lg hover:bg-slate-700 w-full xs:w-auto">İndir</button>
                             </div>
                             
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-slate-500 uppercase bg-slate-100">
-                                    <tr>
-                                        <th className="px-4 py-3 rounded-l-lg">Personel</th>
-                                        <th className="px-4 py-3 text-center">Toplam Saat</th>
-                                        <th className="px-4 py-3 text-center">Saatlik Ücret (TL)</th>
-                                        <th className="px-4 py-3 rounded-r-lg text-right">Hakediş</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {reportData.map(d => (
-                                        <tr key={d.id}>
-                                            <td className="px-4 py-3 font-bold text-slate-800">{d.name}</td>
-                                            <td className="px-4 py-3 text-center text-slate-600">{d.totalHours}</td>
-                                            <td className="px-4 py-3 text-center">
-                                                <input 
-                                                    type="number" 
-                                                    value={rates[d.id]||''} 
-                                                    onChange={(e) => updateRate(d.id, e.target.value)}
-                                                    placeholder="0"
-                                                    className="w-20 p-1 text-center border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent font-bold"
-                                                />
-                                            </td>
-                                            <td className="px-4 py-3 text-right font-bold text-green-600">{formatMoney(d.salary)}</td>
+                            <div className="overflow-x-auto pb-2">
+                                <table className="w-full text-sm text-left whitespace-nowrap">
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-100">
+                                        <tr>
+                                            <th className="px-3 py-2 rounded-l-lg">Personel</th>
+                                            <th className="px-3 py-2 text-center">Saat</th>
+                                            <th className="px-3 py-2 text-center">Ücret/S</th>
+                                            <th className="px-3 py-2 rounded-r-lg text-right">Hakediş</th>
                                         </tr>
-                                    ))}
-                                    <tr className="bg-slate-50">
-                                        <td colSpan="3" className="px-4 py-3 text-right font-bold text-slate-700">GENEL TOPLAM:</td>
-                                        <td className="px-4 py-3 text-right font-black text-green-700 text-lg">{formatMoney(totalSalaryPayout)}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {reportData.map(d => (
+                                            <tr key={d.id}>
+                                                <td className="px-3 py-2 font-bold text-slate-800">{d.name}</td>
+                                                <td className="px-3 py-2 text-center text-slate-600">{d.totalHours}</td>
+                                                <td className="px-3 py-2 text-center">
+                                                    <input 
+                                                        type="number" 
+                                                        value={rates[d.id]||''} 
+                                                        onChange={(e) => updateRate(d.id, e.target.value)}
+                                                        placeholder="0"
+                                                        className="w-16 p-1 text-center border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent font-bold"
+                                                    />
+                                                </td>
+                                                <td className="px-3 py-2 text-right font-bold text-green-600">{formatMoney(d.salary)}</td>
+                                            </tr>
+                                        ))}
+                                        <tr className="bg-slate-50">
+                                            <td colSpan="3" className="px-3 py-2 text-right font-bold text-slate-700">TOPLAM:</td>
+                                            <td className="px-3 py-2 text-right font-black text-green-700">{formatMoney(totalSalaryPayout)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </Modal>
 
