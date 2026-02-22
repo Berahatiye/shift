@@ -48,6 +48,20 @@
         
         @keyframes fade-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
         .animate-fade-in { animation: fade-in 0.2s ease-out; }
+        
+        /* Time Input Fixes for Safari */
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            background: transparent;
+            bottom: 0;
+            color: transparent;
+            cursor: pointer;
+            height: auto;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: auto;
+        }
     </style>
 
     <!-- 2. LIBRARIES -->
@@ -136,11 +150,20 @@
             return dates;
         };
 
+        // Updated calculateHours to accurately process minutes (returns decimal hours)
         const calculateHours = (s, e) => {
             if (!s || !e) return 0;
-            const h1 = parseInt(s.split(':')[0]);
-            const h2 = parseInt(e.split(':')[0]);
-            return Math.max(0, h2 - h1);
+            const [h1, m1] = s.split(':').map(Number);
+            const [h2, m2] = e.split(':').map(Number);
+            
+            let totalMins = (h2 * 60 + (m2 || 0)) - (h1 * 60 + (m1 || 0));
+            
+            // Eğer gece yarısını geçiyorsa (örn: 22:00 - 02:00)
+            if (totalMins < 0) {
+                totalMins += 24 * 60;
+            }
+            
+            return parseFloat((totalMins / 60).toFixed(2));
         };
 
         const formatMoney = (amount) => {
@@ -149,21 +172,19 @@
 
         // --- COMPONENTS ---
 
+        // Updated TimeSelector to use native time input for minutes support
         const TimeSelector = ({ value, onChange, label }) => {
-            const hour = value ? value.split(':')[0] : '10';
-            const hours = Array.from({length: 25}, (_, i) => i.toString().padStart(2, '0'));
             return (
                 <div className="relative w-full">
                     <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">{label}</label>
-                    <div className="relative">
-                        <select 
-                            value={hour} 
-                            onChange={(e) => onChange(`${e.target.value}:00`)} 
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-500 appearance-none text-slate-800"
-                        >
-                            {hours.map(h => <option key={h} value={h}>{h}:00</option>)}
-                        </select>
-                        <div className="absolute right-3 top-3.5 pointer-events-none text-gray-400"><IconChevron /></div>
+                    <div className="relative h-[48px]">
+                        <input 
+                            type="time"
+                            value={value || "10:00"} 
+                            onChange={(e) => onChange(e.target.value)} 
+                            className="absolute inset-0 w-full h-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-500 text-slate-800"
+                            style={{ WebkitAppearance: 'none' }}
+                        />
                     </div>
                 </div>
             );
@@ -238,8 +259,6 @@
             const [newEmp, setNewEmp] = useState({ name: '', role: '' });
             const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
-            const weekInputRef = useRef(null);
-
             // --- EFFECTS ---
             useEffect(() => { 
                 const loader = document.getElementById('loading-overlay');
@@ -296,12 +315,6 @@
             const totalAdvance = reportData.reduce((acc, curr) => acc + curr.advance, 0);
 
             // --- HANDLERS ---
-            const openWeekPicker = () => {
-                if (weekInputRef.current) {
-                    if (weekInputRef.current.showPicker) { weekInputRef.current.showPicker(); } 
-                    else { weekInputRef.current.click(); weekInputRef.current.focus(); }
-                }
-            };
 
             const handleCellClick = (empId, date) => {
                 const currentShift = getShift(empId, date);
@@ -501,16 +514,20 @@
 
                             {/* Controls - Wrap optimized for 260px */}
                             <div className="flex items-center gap-1.5 flex-1 justify-end flex-wrap">
-                                <div onClick={openWeekPicker} className="relative bg-slate-50 rounded-lg px-2 py-1.5 flex items-center gap-1.5 cursor-pointer border border-slate-200 select-none min-w-[110px]">
-                                    <span className="text-slate-500"><IconCalendar /></span>
-                                    <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{formatDateTR(weekStart).slice(0,5)}</span>
+                                {/* iOS Safari Fixed Date Picker */}
+                                <div className="relative bg-slate-50 rounded-lg px-2 py-1.5 flex items-center gap-1.5 border border-slate-200 select-none min-w-[110px] overflow-hidden">
+                                    <span className="text-slate-500 pointer-events-none"><IconCalendar /></span>
+                                    <span className="text-xs font-bold text-slate-700 whitespace-nowrap pointer-events-none">
+                                        {formatDateTR(weekStart).slice(0,5)}
+                                    </span>
                                     <input 
-                                        ref={weekInputRef} 
                                         type="date" 
                                         value={weekStart} 
-                                        onChange={e => setWeekStart(e.target.value)} 
-                                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" 
-                                        style={{visibility: 'hidden', position: 'absolute', top: 0, left: 0}} 
+                                        onChange={e => {
+                                            if(e.target.value) setWeekStart(e.target.value);
+                                        }} 
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                                        style={{ zIndex: 10 }}
                                     />
                                 </div>
                                 
