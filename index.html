@@ -242,6 +242,8 @@
             const [advances, setAdvances] = useState({});
             const [dataLoaded, setDataLoaded] = useState(false);
             const [cloudStatus, setCloudStatus] = useState("disconnected");
+            
+            const lastCloudData = useRef("");
 
             const [weekStart, setWeekStart] = useState(() => {
                 const d = new Date();
@@ -279,13 +281,24 @@
                     setCloudStatus("connected");
                     if (doc.exists) {
                         const data = doc.data();
-                        window.__isIncomingCloudUpdate = true;
-                        setEmployees(data.employees || []);
-                        setShifts(data.shifts || {});
-                        setRates(data.rates || {});
-                        setAdvances(data.advances || {});
+                        
+                        const freshEmployees = data.employees || [];
+                        const freshShifts = data.shifts || {};
+                        const freshRates = data.rates || {};
+                        const freshAdvances = data.advances || {};
+
+                        lastCloudData.current = JSON.stringify({
+                            employees: freshEmployees,
+                            shifts: freshShifts,
+                            rates: freshRates,
+                            advances: freshAdvances
+                        });
+
+                        setEmployees(freshEmployees);
+                        setShifts(freshShifts);
+                        setRates(freshRates);
+                        setAdvances(freshAdvances);
                         setDataLoaded(true);
-                        setTimeout(() => window.__isIncomingCloudUpdate = false, 500);
                     } else {
                         db.collection("restoran").doc("cinarcik_merkez").set({
                             employees: [{ id: 'example', name: 'Örnek Personel', role: 'Garson' }],
@@ -305,11 +318,15 @@
             }, []);
 
             useEffect(() => { 
-                if (dataLoaded && !window.__isIncomingCloudUpdate && cloudStatus === "connected") {
-                    const db = window.firebase.firestore();
-                    db.collection("restoran").doc("cinarcik_merkez").set({
-                        employees, shifts, rates, advances
-                    }, { merge: true });
+                if (dataLoaded && cloudStatus === "connected") {
+                    const currentData = { employees, shifts, rates, advances };
+                    const currentDataStr = JSON.stringify(currentData);
+
+                    if (currentDataStr !== lastCloudData.current) {
+                        lastCloudData.current = currentDataStr;
+                        const db = window.firebase.firestore();
+                        db.collection("restoran").doc("cinarcik_merkez").set(currentData);
+                    }
                 }
             }, [employees, shifts, rates, advances, dataLoaded, cloudStatus]);
 
