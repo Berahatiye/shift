@@ -121,7 +121,6 @@
         const IconCheck = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
         const IconChevron = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>;
         const IconCloudSync = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>;
-        const IconCloudOff = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3"/><line x1="1" y1="1" x2="23" y2="23"/></svg>;
 
         const TR_MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
         const TR_MONTHS_SHORT = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -241,9 +240,6 @@
             const [rates, setRates] = useState({});
             const [advances, setAdvances] = useState({});
             const [dataLoaded, setDataLoaded] = useState(false);
-            const [cloudStatus, setCloudStatus] = useState("disconnected");
-            
-            const lastCloudData = useRef("");
 
             const [weekStart, setWeekStart] = useState(() => {
                 const d = new Date();
@@ -272,32 +268,17 @@
                     window.firebase.initializeApp(firebaseConfig);
                 }
                 const db = window.firebase.firestore();
-                setCloudStatus("connecting");
 
                 const unsub = db.collection("restoran").doc("cinarcik_merkez").onSnapshot((doc) => {
                     const loader = document.getElementById('loading-overlay');
                     if(loader) loader.style.display = 'none';
 
-                    setCloudStatus("connected");
                     if (doc.exists) {
                         const data = doc.data();
-                        
-                        const freshEmployees = data.employees || [];
-                        const freshShifts = data.shifts || {};
-                        const freshRates = data.rates || {};
-                        const freshAdvances = data.advances || {};
-
-                        lastCloudData.current = JSON.stringify({
-                            employees: freshEmployees,
-                            shifts: freshShifts,
-                            rates: freshRates,
-                            advances: freshAdvances
-                        });
-
-                        setEmployees(freshEmployees);
-                        setShifts(freshShifts);
-                        setRates(freshRates);
-                        setAdvances(freshAdvances);
+                        setEmployees(data.employees || []);
+                        setShifts(data.shifts || {});
+                        setRates(data.rates || {});
+                        setAdvances(data.advances || {});
                         setDataLoaded(true);
                     } else {
                         db.collection("restoran").doc("cinarcik_merkez").set({
@@ -309,7 +290,6 @@
                     }
                 }, (error) => {
                     console.error(error);
-                    setCloudStatus("error");
                     const el = document.getElementById('loading-text');
                     if(el) el.innerText = "Buluta bağlanılamadı. Kuralları kontrol edin.";
                 });
@@ -317,18 +297,7 @@
                 return () => unsub();
             }, []);
 
-            useEffect(() => { 
-                if (dataLoaded && cloudStatus === "connected") {
-                    const currentData = { employees, shifts, rates, advances };
-                    const currentDataStr = JSON.stringify(currentData);
-
-                    if (currentDataStr !== lastCloudData.current) {
-                        lastCloudData.current = currentDataStr;
-                        const db = window.firebase.firestore();
-                        db.collection("restoran").doc("cinarcik_merkez").set(currentData);
-                    }
-                }
-            }, [employees, shifts, rates, advances, dataLoaded, cloudStatus]);
+            const getDb = () => window.firebase.firestore().collection("restoran").doc("cinarcik_merkez");
 
             const weekDates = getWeekDates(weekStart);
             const getShift = (empId, date) => shifts[`${empId}_${date}`];
@@ -390,39 +359,58 @@
                 const key = `${activeCell.empId}_${activeCell.date}`;
                 const data = { ...editData };
                 if (data.isOff) { data.color = 'red'; data.label = ''; }
+                
                 setShifts(prev => ({ ...prev, [key]: data }));
                 setModals(prev => ({ ...prev, shift: false }));
+
+                getDb().set({ shifts: { [key]: data } }, { merge: true });
             };
 
             const deleteShift = () => {
                 if (!activeCell) return;
                 const key = `${activeCell.empId}_${activeCell.date}`;
+                
                 setShifts(prev => { const next = { ...prev }; delete next[key]; return next; });
                 setModals(prev => ({ ...prev, shift: false }));
+
+                const FieldValue = window.firebase.firestore.FieldValue;
+                getDb().set({ shifts: { [key]: FieldValue.delete() } }, { merge: true });
             };
 
             const addEmployee = () => {
                 if (!newEmp.name) return;
+                const newEmployee = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel' };
+                
                 setEmployees(prev => {
                     const clean = prev.filter(e => e.id !== 'example');
-                    return [...clean, { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel' }];
+                    const next = [...clean, newEmployee];
+                    getDb().update({ employees: next });
+                    return next;
                 });
                 setNewEmp({ name: '', role: '' });
             };
 
             const removeEmployee = (id) => {
                 if (confirm('Bu personeli silmek istediğinizden emin misiniz?')) {
-                    setEmployees(prev => prev.filter(e => e.id !== id));
+                    setEmployees(prev => {
+                        const next = prev.filter(e => e.id !== id);
+                        getDb().update({ employees: next });
+                        return next;
+                    });
                 }
             };
 
             const updateRate = (empId, val) => {
-                setRates(prev => ({ ...prev, [empId]: parseFloat(val) || 0 }));
+                const numVal = parseFloat(val) || 0;
+                setRates(prev => ({ ...prev, [empId]: numVal }));
+                getDb().set({ rates: { [empId]: numVal } }, { merge: true });
             };
 
             const updateAdvance = (empId, val) => {
                 const key = `${empId}_${reportMonth}`;
-                setAdvances(prev => ({ ...prev, [key]: parseFloat(val) || 0 }));
+                const numVal = parseFloat(val) || 0;
+                setAdvances(prev => ({ ...prev, [key]: numVal }));
+                getDb().set({ advances: { [key]: numVal } }, { merge: true });
             };
 
             const performExport = async (elementId, filename) => {
