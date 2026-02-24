@@ -292,7 +292,7 @@
                         setDataLoaded(true);
                     } else {
                         db.collection("restoran").doc("cinarcik_merkez").set({
-                            employees: [{ id: 'example', name: 'Örnek Personel', role: 'Garson', isActive: true, leaveDate: null }],
+                            employees: [{ id: 'example', name: 'Örnek Personel', role: 'Garson', isActive: true, joinDate: null, leaveDate: null }],
                             shifts: {},
                             rates: {},
                             advances: {},
@@ -317,9 +317,7 @@
             const activeEmployeesForSchedule = useMemo(() => {
                 return employees.filter(emp => {
                     if (emp.isActive !== false) return true;
-                    if (emp.leaveDate) {
-                        if (emp.leaveDate >= weekStart) return true;
-                    }
+                    if (emp.leaveDate && emp.leaveDate >= weekStart) return true;
                     return false;
                 });
             }, [employees, weekStart]);
@@ -337,9 +335,8 @@
                     for (let d = 1; d <= daysInMonth; d++) {
                         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                         
-                        if (emp.isActive === false && emp.leaveDate && dateStr > emp.leaveDate) {
-                            continue;
-                        }
+                        if (emp.joinDate && dateStr < emp.joinDate) continue;
+                        if (emp.isActive === false && emp.leaveDate && dateStr > emp.leaveDate) continue;
                         
                         const shift = shifts[`${emp.id}_${dateStr}`];
                         if (shift) {
@@ -409,7 +406,14 @@
 
             const addEmployee = () => {
                 if (!newEmp.name) return;
-                const newEmployee = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel', isActive: true, leaveDate: null };
+                const newEmployee = { 
+                    id: generateId(), 
+                    name: newEmp.name, 
+                    role: newEmp.role || 'Personel', 
+                    isActive: true, 
+                    joinDate: new Date().toISOString().split('T')[0],
+                    leaveDate: null 
+                };
                 
                 setEmployees(prev => {
                     const clean = prev.filter(e => e.id !== 'example');
@@ -734,6 +738,10 @@
                                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Rol / Etiket</label>
                                         <input type="text" value={editingEmployee.role} onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" />
                                     </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">İşe Başlama Tarihi</label>
+                                        <input type="date" value={editingEmployee.joinDate || ''} onChange={e => setEditingEmployee({...editingEmployee, joinDate: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" />
+                                    </div>
                                     
                                     <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
                                         <span className="text-sm font-bold text-slate-700">Aktif Çalışan</span>
@@ -820,7 +828,16 @@
                                         {reportData.map(d => (
                                             <tr key={d.id} className={d.isActive === false ? "opacity-60 bg-slate-50" : ""}>
                                                 <td className="px-3 py-2 font-bold text-slate-800">
-                                                    {d.name} {d.isActive === false && <span className="text-[9px] text-red-600 ml-1">(Ayrıldı)</span>}
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-1">
+                                                            {d.name} 
+                                                            {d.isActive === false && <span className="text-[9px] text-red-600 bg-red-100 px-1 py-0.5 rounded">(Ayrıldı)</span>}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-500 font-medium mt-0.5 flex items-center flex-wrap">
+                                                            {d.joinDate && <span>Giriş: {formatDateTR(d.joinDate)}</span>}
+                                                            {d.isActive === false && d.leaveDate && <span className="text-red-500 ml-1">| Çıkış: {formatDateTR(d.leaveDate)}</span>}
+                                                        </div>
+                                                    </div>
                                                 </td>
                                                 <td className="px-3 py-2 text-center font-bold text-blue-600">{d.totalHours}</td>
                                                 <td className="px-3 py-2 text-center text-slate-600">{d.totalShifts}</td>
@@ -857,7 +874,16 @@
                                         {reportData.map(d => (
                                             <tr key={d.id} className={d.isActive === false ? "opacity-60 bg-slate-50" : ""}>
                                                 <td className="px-3 py-2 font-bold text-slate-800">
-                                                    {d.name} {d.isActive === false && <span className="text-[9px] text-red-600 ml-1">(Ayrıldı)</span>}
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-1">
+                                                            {d.name} 
+                                                            {d.isActive === false && <span className="text-[9px] text-red-600 bg-red-100 px-1 py-0.5 rounded">(Ayrıldı)</span>}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-500 font-medium mt-0.5 flex items-center flex-wrap">
+                                                            {d.joinDate && <span>Giriş: {formatDateTR(d.joinDate)}</span>}
+                                                            {d.isActive === false && d.leaveDate && <span className="text-red-500 ml-1">| Çıkış: {formatDateTR(d.leaveDate)}</span>}
+                                                        </div>
+                                                    </div>
                                                 </td>
                                                 <td className="px-3 py-2 text-center text-slate-600">{d.totalHours}</td>
                                                 <td className="px-3 py-2 text-center">
