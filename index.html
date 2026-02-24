@@ -292,7 +292,7 @@
                         setDataLoaded(true);
                     } else {
                         db.collection("restoran").doc("cinarcik_merkez").set({
-                            employees: [{ id: 'example', name: 'Örnek Personel', role: 'Garson', isActive: true }],
+                            employees: [{ id: 'example', name: 'Örnek Personel', role: 'Garson', isActive: true, leaveDate: null }],
                             shifts: {},
                             rates: {},
                             advances: {},
@@ -315,8 +315,14 @@
             };
 
             const activeEmployeesForSchedule = useMemo(() => {
-                return employees.filter(emp => emp.isActive !== false);
-            }, [employees]);
+                return employees.filter(emp => {
+                    if (emp.isActive !== false) return true;
+                    if (emp.leaveDate) {
+                        if (emp.leaveDate >= weekStart) return true;
+                    }
+                    return false;
+                });
+            }, [employees, weekStart]);
 
             const weekDates = getWeekDates(weekStart);
             const getShift = (empId, date) => shifts[`${empId}_${date}`];
@@ -330,6 +336,11 @@
                     let totalHours = 0, totalShifts = 0, totalOff = 0;
                     for (let d = 1; d <= daysInMonth; d++) {
                         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        
+                        if (emp.isActive === false && emp.leaveDate && dateStr > emp.leaveDate) {
+                            continue;
+                        }
+                        
                         const shift = shifts[`${emp.id}_${dateStr}`];
                         if (shift) {
                             if (shift.isOff) totalOff++;
@@ -398,7 +409,7 @@
 
             const addEmployee = () => {
                 if (!newEmp.name) return;
-                const newEmployee = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel', isActive: true };
+                const newEmployee = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel', isActive: true, leaveDate: null };
                 
                 setEmployees(prev => {
                     const clean = prev.filter(e => e.id !== 'example');
@@ -723,12 +734,34 @@
                                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Rol / Etiket</label>
                                         <input type="text" value={editingEmployee.role} onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" />
                                     </div>
+                                    
                                     <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
                                         <span className="text-sm font-bold text-slate-700">Aktif Çalışan</span>
-                                        <button onClick={() => setEditingEmployee({...editingEmployee, isActive: !editingEmployee.isActive})} className={`relative w-10 h-6 rounded-full transition-colors duration-200 ${editingEmployee.isActive !== false ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                        <button onClick={() => {
+                                            const nextActive = !editingEmployee.isActive;
+                                            setEditingEmployee({
+                                                ...editingEmployee, 
+                                                isActive: nextActive,
+                                                leaveDate: nextActive ? null : (editingEmployee.leaveDate || new Date().toISOString().split('T')[0])
+                                            });
+                                        }} className={`relative w-10 h-6 rounded-full transition-colors duration-200 ${editingEmployee.isActive !== false ? 'bg-emerald-500' : 'bg-slate-300'}`}>
                                             <span className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ${editingEmployee.isActive !== false ? 'translate-x-4' : 'translate-x-0'}`}/>
                                         </button>
                                     </div>
+
+                                    {editingEmployee.isActive === false && (
+                                        <div className="animate-fade-in pt-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Ayrılma Tarihi</label>
+                                            <input 
+                                                type="date" 
+                                                value={editingEmployee.leaveDate || ''} 
+                                                onChange={e => setEditingEmployee({...editingEmployee, leaveDate: e.target.value})} 
+                                                className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-red-500 border-red-200" 
+                                            />
+                                            <p className="text-[10px] text-slate-400 mt-1">Bu tarihten sonraki vardiyalar maaş hesaplamasına dahil edilmez.</p>
+                                        </div>
+                                    )}
+
                                     <div className="flex gap-2 pt-2">
                                         <button onClick={() => setEditingEmployee(null)} className="flex-1 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-300 transition-colors text-sm">İptal</button>
                                         <button onClick={saveEmployeeEdit} className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors text-sm">Kaydet</button>
