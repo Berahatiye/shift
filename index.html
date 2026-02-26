@@ -182,12 +182,12 @@
             return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(amount);
         };
 
-        const calculateLeaveInfo = (joinDateStr, leaveDateStr, isActive) => {
+        const calculateLeaveInfo = (empId, joinDateStr, leaveDateStr, isActive, shifts) => {
             if (!joinDateStr) return null;
             const joinDate = new Date(joinDateStr);
             const endDate = (isActive === false && leaveDateStr) ? new Date(leaveDateStr) : new Date();
             
-            if (joinDate > endDate) return { years: 0, months: 0, totalDays: 0, currentRight: 14, text: "0 Ay" };
+            if (joinDate > endDate) return { years: 0, months: 0, totalDays: 0, currentRight: 14, text: "0 Ay", usedDays: 0, remainingDays: 0 };
 
             let years = endDate.getFullYear() - joinDate.getFullYear();
             let m = endDate.getMonth() - joinDate.getMonth();
@@ -212,10 +212,21 @@
                 }
             }
 
+            let usedDays = 0;
+            if (shifts) {
+                Object.keys(shifts).forEach(key => {
+                    if (key.startsWith(empId + '_') && shifts[key].isAnnualLeave) {
+                        usedDays++;
+                    }
+                });
+            }
+
             return {
                 years,
                 months: m,
                 totalDays,
+                usedDays,
+                remainingDays: totalDays - usedDays,
                 currentRight,
                 text: `${years > 0 ? years + ' Yıl, ' : ''}${m} Ay`
             };
@@ -303,7 +314,7 @@
             const [activeCell, setActiveCell] = useState(null); 
             const [loading, setLoading] = useState(false);
             
-            const [editData, setEditData] = useState({ start: '10:00', end: '18:00', label: '', color: 'blue', isOff: false });
+            const [editData, setEditData] = useState({ start: '10:00', end: '18:00', label: '', color: 'blue', isOff: false, isAnnualLeave: false });
             const [newEmp, setNewEmp] = useState({ name: '', role: '' });
             const [editingEmployee, setEditingEmployee] = useState(null);
             const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -401,13 +412,24 @@
             const weekDates = getWeekDates(weekStart);
             const getShift = (empId, date) => shifts[`${empId}_${date}`];
 
+            const currentEmpInShift = useMemo(() => {
+                return activeCell ? employees.find(e => e.id === activeCell.empId) : null;
+            }, [activeCell, employees]);
+
+            const currentEmpLeaveInfo = useMemo(() => {
+                if (!currentEmpInShift) return null;
+                return calculateLeaveInfo(currentEmpInShift.id, currentEmpInShift.joinDate, currentEmpInShift.leaveDate, currentEmpInShift.isActive, shifts);
+            }, [currentEmpInShift, shifts]);
+
+            const hasAnnualLeaveRight = currentEmpLeaveInfo && currentEmpLeaveInfo.years > 0;
+
             const reportData = useMemo(() => {
                 if (!reportMonth) return [];
                 const [year, month] = reportMonth.split('-').map(Number);
                 const daysInMonth = new Date(year, month, 0).getDate();
                 
                 return employees.filter(e => e.id !== 'example').map(emp => {
-                    let totalHours = 0, totalShifts = 0, totalOff = 0;
+                    let totalHours = 0, totalShifts = 0, totalOff = 0, totalAnnualLeave = 0;
                     for (let d = 1; d <= daysInMonth; d++) {
                         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                         
@@ -416,7 +438,8 @@
                         
                         const shift = shifts[`${emp.id}_${dateStr}`];
                         if (shift) {
-                            if (shift.isOff) totalOff++;
+                            if (shift.isAnnualLeave) totalAnnualLeave++;
+                            else if (shift.isOff) totalOff++;
                             else { 
                                 totalHours += calculateHours(shift.start, shift.end); 
                                 totalShifts++; 
@@ -433,13 +456,14 @@
                         ...emp, 
                         totalHours, 
                         totalShifts, 
-                        totalOff, 
+                        totalOff,
+                        totalAnnualLeave,
                         rate, 
                         grossSalary,
                         advance,
                         netSalary
                     };
-                }).filter(emp => emp.isActive !== false || emp.totalHours > 0 || emp.advance > 0);
+                }).filter(emp => emp.isActive !== false || emp.totalHours > 0 || emp.advance > 0 || emp.totalAnnualLeave > 0 || emp.totalOff > 0);
             }, [reportMonth, shifts, employees, rates, advances]);
 
             const totalSalaryPayout = reportData.reduce((acc, curr) => acc + curr.netSalary, 0);
@@ -450,9 +474,9 @@
                 const currentShift = getShift(empId, date);
                 setActiveCell({ empId, date });
                 if (currentShift) {
-                    setEditData({ ...currentShift, isOff: currentShift.isOff || false });
+                    setEditData({ ...currentShift, isOff: currentShift.isOff || false, isAnnualLeave: currentShift.isAnnualLeave || false });
                 } else {
-                    setEditData({ start: '10:00', end: '22:00', label: '', color: 'blue', isOff: false });
+                    setEditData({ start: '10:00', end: '22:00', label: '', color: 'blue', isOff: false, isAnnualLeave: false });
                 }
                 setModals(prev => ({ ...prev, shift: true }));
             };
@@ -461,7 +485,8 @@
                 if (!activeCell) return;
                 const key = `${activeCell.empId}_${activeCell.date}`;
                 const data = { ...editData };
-                if (data.isOff) { data.color = 'red'; data.label = ''; }
+                if (data.isOff) { data.color = 'red'; data.label = ''; data.isAnnualLeave = false; }
+                else if (data.isAnnualLeave) { data.color = 'amber'; data.label = ''; data.isOff = false; }
                 
                 setShifts(prev => ({ ...prev, [key]: data }));
                 setModals(prev => ({ ...prev, shift: false }));
@@ -626,7 +651,9 @@
                 let borderClass = "border-slate-100 border-b border-r";
                 
                 if (shift) {
-                    if (shift.isOff) {
+                    if (shift.isAnnualLeave) {
+                        bgClass = "bg-amber-50 border-amber-200";
+                    } else if (shift.isOff) {
                         bgClass = "bg-red-50 border-red-100";
                     } else {
                         if (shift.color === 'blue') bgClass = "bg-blue-50 border-blue-200"; 
@@ -646,7 +673,9 @@
                         {isToday && !shift && <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500"></div>}
                         {shift ? (
                             <div className="flex flex-col h-full justify-center items-center text-center w-full">
-                                {shift.isOff ? (
+                                {shift.isAnnualLeave ? (
+                                    <span className="font-bold text-amber-600 text-[11px] tracking-wide">YILLIK İZİN</span>
+                                ) : shift.isOff ? (
                                     <span className="font-bold text-red-600 text-sm tracking-wide">İZİN</span>
                                 ) : (
                                     <>
@@ -789,14 +818,17 @@
 
                     <Modal isOpen={modals.shift} onClose={() => setModals({...modals, shift: false})} title="Vardiya Düzenle">
                         <div className="space-y-5">
-                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                <span className="text-sm font-bold text-slate-700">İzinli (OFF)</span>
-                                <button onClick={() => setEditData(p => ({...p, isOff: !p.isOff}))} className={`relative w-10 h-6 rounded-full transition-colors duration-200 ${editData.isOff ? 'bg-red-500' : 'bg-slate-300'}`}>
-                                    <span className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ${editData.isOff ? 'translate-x-4' : 'translate-x-0'}`}/>
-                                </button>
+                            <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                                <button onClick={() => setEditData({...editData, isOff: false, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${!editData.isOff && !editData.isAnnualLeave ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Mesai</button>
+                                <button onClick={() => setEditData({...editData, isOff: true, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${editData.isOff ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>OFF (İzin)</button>
+                                <button onClick={() => hasAnnualLeaveRight && setEditData({...editData, isAnnualLeave: true, isOff: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${!hasAnnualLeaveRight ? 'opacity-40 cursor-not-allowed text-slate-400' : editData.isAnnualLeave ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Yıllık İzin</button>
                             </div>
 
-                            {!editData.isOff ? (
+                            {!hasAnnualLeaveRight && !editData.isOff && !editData.isAnnualLeave && (
+                                <p className="text-[9px] text-amber-600 text-center mt-1 font-medium">* Personel henüz 1 yıllık kıdemi doldurmadığı için yıllık izin hakkı yoktur.</p>
+                            )}
+
+                            {!editData.isOff && !editData.isAnnualLeave ? (
                                 <div className="space-y-4 animate-fade-in">
                                     <div className="flex flex-col xs:flex-row gap-3">
                                         <TimeSelector label="BAŞLANGIÇ" value={editData.start} onChange={v => setEditData({...editData, start: v})} />
@@ -817,9 +849,13 @@
                                         </div>
                                     </div>
                                 </div>
+                            ) : editData.isOff ? (
+                                <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center text-sm font-medium border border-red-100 animate-fade-in">
+                                    Bu gün personel haftalık izinli (OFF) sayılacaktır.
+                                </div>
                             ) : (
-                                <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center text-sm font-medium border border-red-100">
-                                    Bu gün personel izinli sayılacaktır.
+                                <div className="p-4 bg-amber-50 text-amber-600 rounded-xl text-center text-sm font-medium border border-amber-100 animate-fade-in">
+                                    Bu gün personel "Yıllık İzinli" sayılacaktır ve toplam izninden düşülecektir.
                                 </div>
                             )}
 
@@ -849,16 +885,31 @@
                                     </div>
                                     
                                     {editingEmployee.joinDate && (
-                                        <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg">
-                                            <h5 className="text-[10px] font-bold text-blue-500 uppercase mb-1 flex items-center gap-1"><IconSun /> Yıllık İzin Durumu</h5>
-                                            <div className="flex justify-between items-center mt-2">
-                                                <span className="text-xs font-medium text-blue-800">Kıdem: {calculateLeaveInfo(editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive).text}</span>
-                                                <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-1 rounded-md">Toplam {calculateLeaveInfo(editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive).totalDays} Gün</span>
+                                        <div className="bg-amber-50 border border-amber-100 p-3 rounded-lg">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h5 className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1"><IconSun /> Yıllık İzin Durumu</h5>
+                                                <span className="text-[10px] font-bold text-amber-700 bg-amber-200 px-1.5 py-0.5 rounded">Kıdem: {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.text}</span>
                                             </div>
-                                            {calculateLeaveInfo(editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive).years > 0 ? (
-                                                <p className="text-[9px] text-blue-600 mt-2 opacity-80">* Yılda {calculateLeaveInfo(editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive).currentRight} gün hakediş baz alınmıştır.</p>
+                                            
+                                            <div className="grid grid-cols-3 gap-2 text-center mt-3">
+                                                <div className="bg-white p-1.5 rounded border border-amber-100">
+                                                    <div className="text-[10px] text-slate-500 font-medium">Hakediş</div>
+                                                    <div className="font-bold text-sm text-slate-700">{calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.totalDays}</div>
+                                                </div>
+                                                <div className="bg-white p-1.5 rounded border border-amber-100">
+                                                    <div className="text-[10px] text-slate-500 font-medium">Kullanılan</div>
+                                                    <div className="font-bold text-sm text-amber-600">{calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.usedDays}</div>
+                                                </div>
+                                                <div className="bg-white p-1.5 rounded border border-amber-100">
+                                                    <div className="text-[10px] text-slate-500 font-medium">Kalan</div>
+                                                    <div className="font-bold text-sm text-emerald-600">{calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.remainingDays}</div>
+                                                </div>
+                                            </div>
+                                            
+                                            {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.years > 0 ? (
+                                                <p className="text-[9px] text-amber-600 mt-2 opacity-80">* Yılda {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.currentRight} gün hakediş baz alınmıştır.</p>
                                             ) : (
-                                                <p className="text-[9px] text-blue-600 mt-2 opacity-80">* 1. yılını doldurduğunda 14 gün hak edecektir.</p>
+                                                <p className="text-[9px] text-amber-600 mt-2 opacity-80">* 1. yılını doldurduğunda 14 gün hak edecektir.</p>
                                             )}
                                         </div>
                                     )}
@@ -941,7 +992,8 @@
                                             <th className="px-3 py-2 rounded-l-lg">Personel</th>
                                             <th className="px-3 py-2 text-center">Saat</th>
                                             <th className="px-3 py-2 text-center">Gün</th>
-                                            <th className="px-3 py-2 rounded-r-lg text-center">İzin</th>
+                                            <th className="px-3 py-2 text-center">Y. İzin</th>
+                                            <th className="px-3 py-2 rounded-r-lg text-center">OFF</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -961,10 +1013,11 @@
                                                 </td>
                                                 <td className="px-3 py-2 text-center font-bold text-blue-600">{d.totalHours}</td>
                                                 <td className="px-3 py-2 text-center text-slate-600">{d.totalShifts}</td>
+                                                <td className="px-3 py-2 text-center text-amber-600 font-bold">{d.totalAnnualLeave}</td>
                                                 <td className="px-3 py-2 text-center text-red-500 font-bold">{d.totalOff}</td>
                                             </tr>
                                         ))}
-                                        {reportData.length === 0 && <tr><td colSpan="4" className="text-center p-4 text-slate-400">Bu aya ait veri bulunamadı.</td></tr>}
+                                        {reportData.length === 0 && <tr><td colSpan="5" className="text-center p-4 text-slate-400">Bu aya ait veri bulunamadı.</td></tr>}
                                     </tbody>
                                 </table>
                             </div>
@@ -984,6 +1037,7 @@
                                         <tr>
                                             <th className="px-3 py-2 rounded-l-lg">Personel</th>
                                             <th className="px-3 py-2 text-center">Saat</th>
+                                            <th className="px-3 py-2 text-center">Y. İzin</th>
                                             <th className="px-3 py-2 text-center">Ücret/S</th>
                                             <th className="px-3 py-2 text-right">Hakediş</th>
                                             <th className="px-3 py-2 text-center">Avans</th>
@@ -1006,6 +1060,7 @@
                                                     </div>
                                                 </td>
                                                 <td className="px-3 py-2 text-center text-slate-600">{d.totalHours}</td>
+                                                <td className="px-3 py-2 text-center text-amber-600 font-bold">{d.totalAnnualLeave}</td>
                                                 <td className="px-3 py-2 text-center">
                                                     <input 
                                                         type="number" 
@@ -1029,7 +1084,7 @@
                                             </tr>
                                         ))}
                                         <tr className="bg-slate-50 font-bold text-slate-700">
-                                            <td colSpan="3" className="px-3 py-2 text-right">TOPLAM:</td>
+                                            <td colSpan="4" className="px-3 py-2 text-right">TOPLAM:</td>
                                             <td className="px-3 py-2 text-right text-slate-600">{formatMoney(totalGross)}</td>
                                             <td className="px-3 py-2 text-center text-red-500">{formatMoney(totalAdvance)}</td>
                                             <td className="px-3 py-2 text-right text-green-700 font-black">{formatMoney(totalSalaryPayout)}</td>
