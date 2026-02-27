@@ -183,11 +183,21 @@
         };
 
         const calculateLeaveInfo = (empId, joinDateStr, leaveDateStr, isActive, shifts) => {
-            if (!joinDateStr) return null;
+            let usedDays = 0;
+            if (shifts) {
+                Object.keys(shifts).forEach(key => {
+                    if (key.startsWith(empId + '_') && shifts[key].isAnnualLeave) {
+                        usedDays++;
+                    }
+                });
+            }
+
+            if (!joinDateStr) return { years: 0, months: 0, totalDays: 0, usedDays, remainingDays: 0, currentRight: 14, text: "Tarih Yok" };
+
             const joinDate = new Date(joinDateStr);
             const endDate = (isActive === false && leaveDateStr) ? new Date(leaveDateStr) : new Date();
             
-            if (joinDate > endDate) return { years: 0, months: 0, totalDays: 0, currentRight: 14, text: "0 Ay", usedDays: 0, remainingDays: 0 };
+            if (joinDate > endDate) return { years: 0, months: 0, totalDays: 0, usedDays, remainingDays: 0, currentRight: 14, text: "0 Ay" };
 
             let years = endDate.getFullYear() - joinDate.getFullYear();
             let m = endDate.getMonth() - joinDate.getMonth();
@@ -212,21 +222,14 @@
                 }
             }
 
-            let usedDays = 0;
-            if (shifts) {
-                Object.keys(shifts).forEach(key => {
-                    if (key.startsWith(empId + '_') && shifts[key].isAnnualLeave) {
-                        usedDays++;
-                    }
-                });
-            }
+            const remainingDays = Math.max(0, totalDays - usedDays);
 
             return {
                 years,
                 months: m,
                 totalDays,
                 usedDays,
-                remainingDays: totalDays - usedDays,
+                remainingDays,
                 currentRight,
                 text: `${years > 0 ? years + ' Yıl, ' : ''}${m} Ay`
             };
@@ -421,7 +424,7 @@
                 return calculateLeaveInfo(currentEmpInShift.id, currentEmpInShift.joinDate, currentEmpInShift.leaveDate, currentEmpInShift.isActive, shifts);
             }, [currentEmpInShift, shifts]);
 
-            const hasAnnualLeaveRight = currentEmpLeaveInfo && currentEmpLeaveInfo.years > 0;
+            const hasAnnualLeaveRight = currentEmpLeaveInfo ? currentEmpLeaveInfo.years > 0 : false;
 
             const reportData = useMemo(() => {
                 if (!reportMonth) return [];
@@ -485,6 +488,11 @@
                 if (!activeCell) return;
                 const key = `${activeCell.empId}_${activeCell.date}`;
                 const data = { ...editData };
+                
+                if (!hasAnnualLeaveRight) {
+                    data.isAnnualLeave = false;
+                }
+
                 if (data.isOff) { data.color = 'red'; data.label = ''; data.isAnnualLeave = false; }
                 else if (data.isAnnualLeave) { data.color = 'amber'; data.label = ''; data.isOff = false; }
                 
@@ -819,16 +827,14 @@
                     <Modal isOpen={modals.shift} onClose={() => setModals({...modals, shift: false})} title="Vardiya Düzenle">
                         <div className="space-y-5">
                             <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                                <button onClick={() => setEditData({...editData, isOff: false, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${!editData.isOff && !editData.isAnnualLeave ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Mesai</button>
+                                <button onClick={() => setEditData({...editData, isOff: false, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${!editData.isOff && (!editData.isAnnualLeave || !hasAnnualLeaveRight) ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Mesai</button>
                                 <button onClick={() => setEditData({...editData, isOff: true, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${editData.isOff ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>OFF (İzin)</button>
-                                <button onClick={() => hasAnnualLeaveRight && setEditData({...editData, isAnnualLeave: true, isOff: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${!hasAnnualLeaveRight ? 'opacity-40 cursor-not-allowed text-slate-400' : editData.isAnnualLeave ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Yıllık İzin</button>
+                                {hasAnnualLeaveRight && (
+                                    <button onClick={() => setEditData({...editData, isAnnualLeave: true, isOff: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${editData.isAnnualLeave ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Yıllık İzin</button>
+                                )}
                             </div>
 
-                            {!hasAnnualLeaveRight && !editData.isOff && !editData.isAnnualLeave && (
-                                <p className="text-[9px] text-amber-600 text-center mt-1 font-medium">* Personel henüz 1 yıllık kıdemi doldurmadığı için yıllık izin hakkı yoktur.</p>
-                            )}
-
-                            {!editData.isOff && !editData.isAnnualLeave ? (
+                            {!editData.isOff && (!editData.isAnnualLeave || !hasAnnualLeaveRight) ? (
                                 <div className="space-y-4 animate-fade-in">
                                     <div className="flex flex-col xs:flex-row gap-3">
                                         <TimeSelector label="BAŞLANGIÇ" value={editData.start} onChange={v => setEditData({...editData, start: v})} />
@@ -891,25 +897,26 @@
                                                 <span className="text-[10px] font-bold text-amber-700 bg-amber-200 px-1.5 py-0.5 rounded">Kıdem: {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.text}</span>
                                             </div>
                                             
-                                            <div className="grid grid-cols-3 gap-2 text-center mt-3">
-                                                <div className="bg-white p-1.5 rounded border border-amber-100">
-                                                    <div className="text-[10px] text-slate-500 font-medium">Hakediş</div>
-                                                    <div className="font-bold text-sm text-slate-700">{calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.totalDays}</div>
-                                                </div>
-                                                <div className="bg-white p-1.5 rounded border border-amber-100">
-                                                    <div className="text-[10px] text-slate-500 font-medium">Kullanılan</div>
-                                                    <div className="font-bold text-sm text-amber-600">{calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.usedDays}</div>
-                                                </div>
-                                                <div className="bg-white p-1.5 rounded border border-amber-100">
-                                                    <div className="text-[10px] text-slate-500 font-medium">Kalan</div>
-                                                    <div className="font-bold text-sm text-emerald-600">{calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.remainingDays}</div>
-                                                </div>
-                                            </div>
-                                            
                                             {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.years > 0 ? (
-                                                <p className="text-[9px] text-amber-600 mt-2 opacity-80">* Yılda {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.currentRight} gün hakediş baz alınmıştır.</p>
+                                                <div className="animate-fade-in">
+                                                    <div className="grid grid-cols-3 gap-2 text-center mt-3">
+                                                        <div className="bg-white p-1.5 rounded border border-amber-100">
+                                                            <div className="text-[10px] text-slate-500 font-medium">Hakediş</div>
+                                                            <div className="font-bold text-sm text-slate-700">{calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.totalDays}</div>
+                                                        </div>
+                                                        <div className="bg-white p-1.5 rounded border border-amber-100">
+                                                            <div className="text-[10px] text-slate-500 font-medium">Kullanılan</div>
+                                                            <div className="font-bold text-sm text-amber-600">{calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.usedDays}</div>
+                                                        </div>
+                                                        <div className="bg-white p-1.5 rounded border border-amber-100">
+                                                            <div className="text-[10px] text-slate-500 font-medium">Kalan</div>
+                                                            <div className="font-bold text-sm text-emerald-600">{calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.remainingDays}</div>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-[9px] text-amber-600 mt-2 opacity-80">* Yılda {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.currentRight} gün hakediş baz alınmıştır.</p>
+                                                </div>
                                             ) : (
-                                                <p className="text-[9px] text-amber-600 mt-2 opacity-80">* 1. yılını doldurduğunda 14 gün hak edecektir.</p>
+                                                <p className="text-[10px] text-amber-600 mt-2 font-medium text-center py-2 bg-white rounded border border-amber-100 animate-fade-in">* Personel henüz 1 yılını doldurmadığı için yıllık izin hakkı bulunmamaktadır.</p>
                                             )}
                                         </div>
                                     )}
