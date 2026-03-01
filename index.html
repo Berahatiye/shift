@@ -82,7 +82,7 @@
 
     <div id="loading-overlay">
         <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-slate-500 font-bold text-sm" id="loading-text">Buluta Bağlanıyor...</p>
+        <p class="text-slate-500 font-bold text-sm text-center px-4" id="loading-text">Buluta Bağlanıyor...</p>
     </div>
 
     <div id="root" class="h-screen w-screen overflow-hidden flex flex-col"></div>
@@ -192,12 +192,12 @@
                 });
             }
 
-            if (!joinDateStr) return { years: 0, months: 0, totalDays: 0, usedDays, remainingDays: 0, currentRight: 14, text: "Tarih Yok" };
+            if (!joinDateStr) return { years: 0, months: 0, totalDays: 0, usedDays, remainingDays: 0, currentRight: 0, text: "Tarih Yok", hasRight: false };
 
             const joinDate = new Date(joinDateStr);
             const endDate = (isActive === false && leaveDateStr) ? new Date(leaveDateStr) : new Date();
             
-            if (joinDate > endDate) return { years: 0, months: 0, totalDays: 0, usedDays, remainingDays: 0, currentRight: 14, text: "0 Ay" };
+            if (joinDate > endDate) return { years: 0, months: 0, totalDays: 0, usedDays, remainingDays: 0, currentRight: 0, text: "0 Ay", hasRight: false };
 
             let years = endDate.getFullYear() - joinDate.getFullYear();
             let m = endDate.getMonth() - joinDate.getMonth();
@@ -207,18 +207,20 @@
             }
 
             let totalDays = 0;
-            let currentRight = 14;
+            let currentRight = 0;
 
-            for (let i = 1; i <= years; i++) {
-                if (i <= 5) {
-                    totalDays += 14;
-                    if (i === years) currentRight = 14;
-                } else if (i < 15) {
-                    totalDays += 20;
-                    if (i === years) currentRight = 20;
-                } else {
-                    totalDays += 26;
-                    if (i === years) currentRight = 26;
+            if (years > 0) {
+                for (let i = 1; i <= years; i++) {
+                    if (i <= 5) {
+                        totalDays += 14;
+                        if (i === years) currentRight = 14;
+                    } else if (i < 15) {
+                        totalDays += 20;
+                        if (i === years) currentRight = 20;
+                    } else {
+                        totalDays += 26;
+                        if (i === years) currentRight = 26;
+                    }
                 }
             }
 
@@ -231,7 +233,8 @@
                 usedDays,
                 remainingDays,
                 currentRight,
-                text: `${years > 0 ? years + ' Yıl, ' : ''}${m} Ay`
+                text: `${years > 0 ? years + ' Yıl, ' : ''}${m} Ay`,
+                hasRight: years > 0
             };
         };
 
@@ -358,7 +361,9 @@
                 }, (error) => {
                     console.error(error);
                     const el = document.getElementById('loading-text');
-                    if(el) el.innerText = "Buluta bağlanılamadı. Kuralları kontrol edin.";
+                    if(el) {
+                        el.innerHTML = "<span style='color:red; font-size:18px;'>BAĞLANTI HATASI!</span><br><br>Firebase veritabanınızın 'Rules' (Kurallar) süresi dolmuş olabilir.<br>Lütfen Firebase panelinden kuralları kontrol edin.";
+                    }
                 });
 
                 return () => unsub();
@@ -424,7 +429,7 @@
                 return calculateLeaveInfo(currentEmpInShift.id, currentEmpInShift.joinDate, currentEmpInShift.leaveDate, currentEmpInShift.isActive, shifts);
             }, [currentEmpInShift, shifts]);
 
-            const hasAnnualLeaveRight = currentEmpLeaveInfo ? currentEmpLeaveInfo.years > 0 : false;
+            const hasAnnualLeaveRight = currentEmpLeaveInfo ? currentEmpLeaveInfo.hasRight : false;
 
             const reportData = useMemo(() => {
                 if (!reportMonth) return [];
@@ -449,7 +454,8 @@
                             }
                         }
                     }
-                    const rate = rates[emp.id] || 0;
+                    const rateKey = `${emp.id}_${reportMonth}`;
+                    const rate = rates[rateKey] || 0;
                     const advanceKey = `${emp.id}_${reportMonth}`;
                     const advance = advances[advanceKey] || 0;
                     const grossSalary = totalHours * rate;
@@ -520,7 +526,7 @@
                     name: newEmp.name, 
                     role: newEmp.role || 'Personel', 
                     isActive: true, 
-                    joinDate: new Date().toISOString().split('T')[0],
+                    joinDate: null,
                     leaveDate: null 
                 };
                 
@@ -555,9 +561,10 @@
             };
 
             const updateRate = (empId, val) => {
+                const key = `${empId}_${reportMonth}`;
                 const numVal = parseFloat(val) || 0;
-                setRates(prev => ({ ...prev, [empId]: numVal }));
-                pushToDb({ rates: { [empId]: numVal } });
+                setRates(prev => ({ ...prev, [key]: numVal }));
+                pushToDb({ rates: { [key]: numVal } });
             };
 
             const updateAdvance = (empId, val) => {
@@ -827,14 +834,14 @@
                     <Modal isOpen={modals.shift} onClose={() => setModals({...modals, shift: false})} title="Vardiya Düzenle">
                         <div className="space-y-5">
                             <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                                <button onClick={() => setEditData({...editData, isOff: false, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${!editData.isOff && (!editData.isAnnualLeave || !hasAnnualLeaveRight) ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Mesai</button>
+                                <button onClick={() => setEditData({...editData, isOff: false, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${!editData.isOff && (!editData.isAnnualLeave || !currentEmpLeaveInfo?.hasRight) ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Mesai</button>
                                 <button onClick={() => setEditData({...editData, isOff: true, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${editData.isOff ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>OFF (İzin)</button>
-                                {hasAnnualLeaveRight && (
+                                {currentEmpLeaveInfo?.hasRight && (
                                     <button onClick={() => setEditData({...editData, isAnnualLeave: true, isOff: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${editData.isAnnualLeave ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Yıllık İzin</button>
                                 )}
                             </div>
 
-                            {!editData.isOff && (!editData.isAnnualLeave || !hasAnnualLeaveRight) ? (
+                            {!editData.isOff && (!editData.isAnnualLeave || !currentEmpLeaveInfo?.hasRight) ? (
                                 <div className="space-y-4 animate-fade-in">
                                     <div className="flex flex-col xs:flex-row gap-3">
                                         <TimeSelector label="BAŞLANGIÇ" value={editData.start} onChange={v => setEditData({...editData, start: v})} />
@@ -890,14 +897,14 @@
                                         <input type="date" value={editingEmployee.joinDate || ''} onChange={e => setEditingEmployee({...editingEmployee, joinDate: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" />
                                     </div>
                                     
-                                    {editingEmployee.joinDate && (
+                                    {editingEmployee.joinDate ? (
                                         <div className="bg-amber-50 border border-amber-100 p-3 rounded-lg">
                                             <div className="flex justify-between items-center mb-2">
                                                 <h5 className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1"><IconSun /> Yıllık İzin Durumu</h5>
                                                 <span className="text-[10px] font-bold text-amber-700 bg-amber-200 px-1.5 py-0.5 rounded">Kıdem: {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.text}</span>
                                             </div>
                                             
-                                            {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.years > 0 ? (
+                                            {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.hasRight ? (
                                                 <div className="animate-fade-in">
                                                     <div className="grid grid-cols-3 gap-2 text-center mt-3">
                                                         <div className="bg-white p-1.5 rounded border border-amber-100">
@@ -918,6 +925,10 @@
                                             ) : (
                                                 <p className="text-[10px] text-amber-600 mt-2 font-medium text-center py-2 bg-white rounded border border-amber-100 animate-fade-in">* Personel henüz 1 yılını doldurmadığı için yıllık izin hakkı bulunmamaktadır.</p>
                                             )}
+                                        </div>
+                                    ) : (
+                                        <div className="bg-amber-50 border border-amber-100 p-3 rounded-lg text-center">
+                                            <p className="text-[10px] text-amber-600 font-medium">* Yıllık izin durumunu görmek için işe başlama tarihi giriniz.</p>
                                         </div>
                                     )}
                                     
@@ -1071,7 +1082,7 @@
                                                 <td className="px-3 py-2 text-center">
                                                     <input 
                                                         type="number" 
-                                                        value={rates[d.id]||''} 
+                                                        value={rates[`${d.id}_${reportMonth}`]||''} 
                                                         onChange={(e) => updateRate(d.id, e.target.value)}
                                                         placeholder="0"
                                                         className="w-16 p-1 text-center border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent font-bold"
