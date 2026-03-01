@@ -630,6 +630,16 @@
                     if(el.tagName === 'TD' && el.cellIndex === 0) { el.style.textAlign = 'left'; el.style.fontWeight = 'bold'; }
                 });
 
+                tableClone.querySelectorAll('.shift-time-display').forEach(el => {
+                    el.style.fontSize = '18px';
+                    el.style.fontWeight = '900';
+                });
+                
+                tableClone.querySelectorAll('.shift-status-display').forEach(el => {
+                    el.style.fontSize = '16px';
+                    el.style.fontWeight = '900';
+                });
+
                 container.appendChild(tableClone);
                 document.body.appendChild(container);
 
@@ -689,12 +699,12 @@
                         {shift ? (
                             <div className="flex flex-col h-full justify-center items-center text-center w-full">
                                 {shift.isAnnualLeave ? (
-                                    <span className="font-bold text-amber-600 text-[11px] tracking-wide">YILLIK İZİN</span>
+                                    <span className="shift-status-display font-black text-amber-600 text-xs sm:text-sm tracking-wide">YILLIK İZİN</span>
                                 ) : shift.isOff ? (
-                                    <span className="font-bold text-red-600 text-sm tracking-wide">İZİN</span>
+                                    <span className="shift-status-display font-black text-red-600 text-sm sm:text-base tracking-wide">İZİN</span>
                                 ) : (
                                     <>
-                                        <span className={`font-bold text-xs ${shift.color === 'blue' ? 'text-blue-700' : shift.color === 'green' ? 'text-emerald-700' : shift.color === 'yellow' ? 'text-amber-700' : shift.color === 'purple' ? 'text-purple-700' : 'text-rose-700'}`}>
+                                        <span className={`shift-time-display font-extrabold text-sm sm:text-[15px] tracking-tight sm:tracking-normal ${shift.color === 'blue' ? 'text-blue-700' : shift.color === 'green' ? 'text-emerald-700' : shift.color === 'yellow' ? 'text-amber-700' : shift.color === 'purple' ? 'text-purple-700' : 'text-rose-700'}`}>
                                             {shift.start} - {shift.end}
                                         </span>
                                         {shift.label && <span className="text-[10px] text-gray-500 mt-0.5 leading-tight truncate w-full px-1">{shift.label}</span>}
