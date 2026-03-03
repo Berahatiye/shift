@@ -142,6 +142,13 @@
         const generateId = () => Math.random().toString(36).substr(2, 9);
         const getSecret = () => String.fromCharCode(49, 51, 48, 56, 56, 52);
 
+        const getLocalISODate = (date = new Date()) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+
         const formatDateTR = (dateStr) => {
             if (!dateStr) return "";
             const [y, m, d] = dateStr.split('-');
@@ -161,15 +168,17 @@
         };
 
         const getWeekDates = (startDate) => {
-            const start = new Date(startDate);
+            if (!startDate) return [];
+            const [y, m, d] = startDate.split('-').map(Number);
+            const start = new Date(y, m - 1, d);
             const dates = [];
             for (let i = 0; i < 7; i++) {
-                const d = new Date(start);
-                d.setDate(start.getDate() + i);
+                const currentDate = new Date(start);
+                currentDate.setDate(start.getDate() + i);
                 dates.push({
-                    fullDate: d.toISOString().split('T')[0],
-                    displayDate: `${d.getDate()} ${TR_MONTHS_SHORT[d.getMonth()]}`,
-                    dayName: TR_DAYS[d.getDay()]
+                    fullDate: getLocalISODate(currentDate),
+                    displayDate: `${currentDate.getDate()} ${TR_MONTHS_SHORT[currentDate.getMonth()]}`,
+                    dayName: TR_DAYS[currentDate.getDay()]
                 });
             }
             return dates;
@@ -339,7 +348,7 @@
                 const day = d.getDay(); 
                 const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
                 const monday = new Date(d.setDate(diff));
-                return monday.toISOString().split('T')[0];
+                return getLocalISODate(monday);
             });
             
             const [modals, setModals] = useState({ shift: false, team: false, report: false, salary: false });
@@ -349,7 +358,10 @@
             const [editData, setEditData] = useState({ start: '10:00', end: '18:00', label: '', color: 'blue', isOff: false, isAnnualLeave: false });
             const [newEmp, setNewEmp] = useState({ name: '', role: '' });
             const [editingEmployee, setEditingEmployee] = useState(null);
-            const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
+            const [reportMonth, setReportMonth] = useState(() => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            });
 
             useEffect(() => {
                 const loader = document.getElementById('loading-overlay');
@@ -748,7 +760,8 @@
 
             const renderShiftCell = (emp, dateObj) => {
                 const shift = getShift(emp.id, dateObj.fullDate);
-                const isToday = new Date().toISOString().split('T')[0] === dateObj.fullDate;
+                const todayStr = getLocalISODate();
+                const isToday = todayStr === dateObj.fullDate;
                 let bgClass = isToday ? "bg-blue-50/50" : "bg-white";
                 let borderClass = "border-slate-100 border-b border-r";
                 
@@ -795,44 +808,7 @@
                 );
             };
 
-            if (!isAuthenticated) {
-                return (
-                    <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-4">
-                        <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-xs flex flex-col items-center animate-fade-in border border-slate-100">
-                            <img src={LOGO_URL} className="w-24 h-24 rounded-2xl object-cover mb-5 shadow-sm border border-slate-100" alt="Logo" crossOrigin="anonymous"/>
-                            <h2 className="text-2xl font-black text-slate-800 mb-1 tracking-tight">Çınarcık</h2>
-                            <p className="text-sm font-medium text-slate-500 mb-8 text-center flex items-center gap-1.5">
-                                <IconLock /> Yönetici Girişi
-                            </p>
-                            <form onSubmit={handleLogin} className="w-full flex flex-col gap-4">
-                                <div>
-                                    <input 
-                                        type="password" 
-                                        value={loginPass} 
-                                        onChange={e => {setLoginPass(e.target.value); setLoginError(false);}}
-                                        placeholder="Şifre" 
-                                        className={`w-full p-4 bg-slate-50 border-2 rounded-xl text-center font-black text-xl tracking-widest outline-none transition-all ${loginError ? 'border-red-400 text-red-600 bg-red-50/50' : 'border-slate-200 focus:border-blue-500 focus:bg-white text-slate-800'}`}
-                                        autoFocus
-                                    />
-                                    {loginError && <p className="text-[11px] text-red-500 font-bold text-center mt-2 animate-fade-in">Hatalı şifre, lütfen tekrar deneyin.</p>}
-                                </div>
-                                <button type="submit" className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200 mt-2">
-                                    Giriş Yap
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                );
-            }
-
-            if (!dataLoaded) {
-                return (
-                    <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-4">
-                        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                        <p className="text-slate-500 font-bold text-sm text-center animate-pulse">Veritabanına Bağlanıyor...</p>
-                    </div>
-                );
-            }
+            if (!dataLoaded) return null;
 
             return (
                 <div className="h-full flex flex-col bg-white text-slate-900">
@@ -859,7 +835,14 @@
                                         type="date" 
                                         value={weekStart} 
                                         onChange={e => {
-                                            if(e.target.value) setWeekStart(e.target.value);
+                                            if(e.target.value) {
+                                                const [y, m, d] = e.target.value.split('-').map(Number);
+                                                const selected = new Date(y, m - 1, d);
+                                                const day = selected.getDay();
+                                                const diff = selected.getDate() - day + (day === 0 ? -6 : 1);
+                                                selected.setDate(diff);
+                                                setWeekStart(getLocalISODate(selected));
+                                            }
                                         }} 
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
                                         style={{ zIndex: 10 }}
@@ -888,7 +871,8 @@
                                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Personel</span>
                                             </th>
                                             {weekDates.map(d => {
-                                                const isToday = new Date().toISOString().split('T')[0] === d.fullDate;
+                                                const todayStr = getLocalISODate();
+                                                const isToday = todayStr === d.fullDate;
                                                 return (
                                                     <th key={d.fullDate} className={`p-2 text-center border-b border-slate-200 min-w-[105px] select-none ${isToday ? 'bg-blue-50' : ''}`}>
                                                         <div className="flex flex-col items-center">
