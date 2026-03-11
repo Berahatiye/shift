@@ -4,99 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Çınarcık Vardiya</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    screens: {
-                        'xxs': '320px',
-                    }
-                }
-            }
-        }
+        tailwind.config = { theme: { extend: { screens: { 'xxs': '320px' } } } }
     </script>
     <style>
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .custom-scroll::-webkit-scrollbar { height: 4px; width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        
-        *, *::before, *::after {
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        input, textarea, select {
-            -webkit-user-select: auto;
-            -moz-user-select: auto;
-            -ms-user-select: auto;
-            user-select: auto;
-            font-size: 16px !important;
-        }
-        
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            overscroll-behavior-y: none; 
-            background-color: #f8fafc;
-        }
-        
-        html { -webkit-text-size-adjust: 100%; }
-        
-        #loading-overlay {
-            position: fixed; inset: 0; background: white; z-index: 9999;
-            display: flex; justify-content: center; align-items: center;
-            flex-direction: column; gap: 12px;
-        }
-        
+        *, *::before, *::after { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+        input, textarea, select { -webkit-user-select: auto; user-select: auto; font-size: 16px !important; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overscroll-behavior-y: none; background-color: #f8fafc; }
+        #loading-overlay { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 12px; }
         @keyframes fade-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
         .animate-fade-in { animation: fade-in 0.2s ease-out; }
-        
-        input[type="time"]::-webkit-calendar-picker-indicator {
-            background: transparent;
-            bottom: 0;
-            color: transparent;
-            cursor: pointer;
-            height: auto;
-            left: 0;
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: auto;
-        }
+        input[type="time"]::-webkit-calendar-picker-indicator { background: transparent; bottom: 0; color: transparent; cursor: pointer; height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto; }
     </style>
-
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-
     <div id="loading-overlay">
         <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-slate-500 font-bold text-sm text-center px-4" id="loading-text">Uygulama Başlatılıyor...</p>
+        <p class="text-slate-500 font-bold text-sm text-center px-4" id="loading-text">Güvenli Bağlantı Kuruluyor...</p>
     </div>
-
     <div id="root" class="h-screen w-screen overflow-hidden flex flex-col"></div>
-
     <script>
-        window.onerror = function(msg, url, line, col, error) {
+        window.onerror = function(msg) {
             const overlay = document.getElementById('loading-overlay');
-            if(overlay) {
-                overlay.innerHTML = `<div style="color:red;padding:20px;text-align:center"><strong>Hata:</strong><br>${msg}<br><button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#ef4444;color:white;border-radius:6px;font-weight:bold">Yenile</button></div>`;
-            }
+            if(overlay) overlay.innerHTML = `<div style="color:red;padding:20px;text-align:center"><strong>Hata:</strong><br>${msg}<br><button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#ef4444;color:white;border-radius:6px;font-weight:bold">Yenile</button></div>`;
             return false;
         };
     </script>
-
     <script type="text/babel">
         const firebaseConfig = {
   apiKey: "AIzaSyD-qmCOAgoKLDMOkgGQCTM7qYdqUKvUQUo",
@@ -107,10 +52,10 @@
   appId: "1:1017027894809:web:860b1345a7dad1f696d488"
         };
 
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useMemo } = React;
 
         const LOGO_URL = "https://raw.githubusercontent.com/Berahatiye/rose/refs/heads/main/rosecafelogo.webp";
-        
+        const ADMIN_EMAIL = "yonetici@cinarcik.com";
         const getSecret = () => String.fromCharCode(49, 51, 48, 56, 56, 52);
 
         const IconCalendar = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
@@ -192,71 +137,33 @@
             };
         };
 
-        const TimeSelector = ({ value, onChange, label }) => {
-            return (
-                <div className="relative w-full">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">{label}</label>
-                    <div className="relative h-[48px]">
-                        <input 
-                            type="time"
-                            value={value || "10:00"} 
-                            onChange={(e) => onChange(e.target.value)} 
-                            className="absolute inset-0 w-full h-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-500 text-slate-800"
-                            style={{ WebkitAppearance: 'none' }}
-                        />
-                    </div>
+        const InputUI = (props) => <input className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" {...props} />;
+        const TimeUI = ({ val, onChange, label }) => (
+            <div className="relative w-full">
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">{label}</label>
+                <div className="relative h-[48px]">
+                    <input type="time" value={val || "10:00"} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 w-full h-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center outline-none focus:border-blue-500 text-slate-800" style={{ WebkitAppearance: 'none' }}/>
                 </div>
-            );
-        };
+            </div>
+        );
 
-        const MonthSelector = ({ value, onChange }) => {
-            const [y, m] = value.split('-');
-            const years = Array.from({length: 5}, (_, i) => new Date().getFullYear() - 2 + i);
-            return (
-                <div className="flex gap-2 w-full max-w-[200px]">
-                    <div className="relative flex-1">
-                        <select 
-                            value={m} 
-                            onChange={(e) => onChange(`${y}-${e.target.value}`)} 
-                            className="w-full py-2 pl-2 pr-6 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700 text-sm"
-                        >
-                            {TR_MONTHS.map((mn, i) => <option key={i} value={String(i+1).padStart(2,'0')}>{mn}</option>)}
-                        </select>
-                        <div className="absolute right-2 top-2.5 pointer-events-none text-gray-400 w-3 h-3"><IconChevron /></div>
-                    </div>
-                    <div className="relative w-20">
-                        <select 
-                            value={y} 
-                            onChange={(e) => onChange(`${e.target.value}-${m}`)} 
-                            className="w-full py-2 pl-2 pr-6 bg-slate-100 border border-slate-200 rounded-lg font-bold outline-none appearance-none cursor-pointer text-slate-700 text-sm"
-                        >
-                            {years.map(yr => <option key={yr} value={yr}>{yr}</option>)}
-                        </select>
-                        <div className="absolute right-2 top-2.5 pointer-events-none text-gray-400 w-3 h-3"><IconChevron /></div>
-                    </div>
+        const EmpCell = ({ emp }) => (
+            <div className="flex flex-col">
+                <div className="flex items-center gap-1">{emp.name} {emp.isActive === false && <span className="text-[9px] text-red-600 bg-red-100 px-1 py-0.5 rounded">(Ayrıldı)</span>}</div>
+                <div className="text-[10px] text-slate-500 font-medium mt-0.5 flex flex-wrap">
+                    {emp.joinDate && <span>Giriş: {formatDateTR(emp.joinDate)}</span>}
+                    {emp.isActive === false && emp.leaveDate && <span className="text-red-500 ml-1">| Çıkış: {formatDateTR(emp.leaveDate)}</span>}
                 </div>
-            );
-        };
-
-        const Modal = ({ isOpen, onClose, title, children, maxWidth="max-w-sm" }) => {
-            if(!isOpen) return null;
-            return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 animate-fade-in" style={{zIndex:9999}}>
-                    <div className={`bg-white rounded-2xl shadow-2xl w-[95vw] ${maxWidth} overflow-hidden flex flex-col max-h-[90vh]`}>
-                        <div className="flex justify-between items-center p-3 border-b border-gray-100 bg-slate-50 shrink-0">
-                            <h3 className="text-base font-bold text-slate-800">{title}</h3>
-                            <button onClick={onClose} className="p-1.5 bg-white rounded-full hover:bg-slate-200 transition-colors"><IconX/></button>
-                        </div>
-                        <div className="p-4 overflow-y-auto custom-scroll">{children}</div>
-                    </div>
-                </div>
-            );
-        };
+            </div>
+        );
 
         const App = () => {
-            const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('cinarcik_auth_hash') === btoa(getSecret()));
+            const [authUser, setAuthUser] = useState(null);
+            const [authLoading, setAuthLoading] = useState(true);
             const [loginPass, setLoginPass] = useState('');
             const [loginError, setLoginError] = useState(false);
+            const [isLoginProcessing, setIsLoginProcessing] = useState(false);
+            const [loginErrorMsg, setLoginErrorMsg] = useState("");
 
             const [employees, setEmployees] = useState([]);
             const [shifts, setShifts] = useState({});
@@ -267,6 +174,13 @@
             const [dataLoaded, setDataLoaded] = useState(false);
             const [reminderData, setReminderData] = useState(null);
             const [onlineUsers, setOnlineUsers] = useState(1);
+            
+            const [modals, setModals] = useState({ shift: false, team: false, report: false, salary: false });
+            const [activeCell, setActiveCell] = useState(null); 
+            const [loading, setLoading] = useState(false);
+            const [editData, setEditData] = useState({ start: '10:00', end: '18:00', label: '', color: 'blue', isOff: false, isAnnualLeave: false });
+            const [newEmp, setNewEmp] = useState({ name: '', role: '' });
+            const [editingEmployee, setEditingEmployee] = useState(null);
 
             const sessionId = useMemo(() => {
                 let sid = sessionStorage.getItem('cinarcik_sid');
@@ -279,35 +193,55 @@
                 return getLocalISODate(new Date(d.setDate(diff)));
             });
             
-            const [modals, setModals] = useState({ shift: false, team: false, report: false, salary: false });
-            const [activeCell, setActiveCell] = useState(null); 
-            const [loading, setLoading] = useState(false);
-            
-            const [editData, setEditData] = useState({ start: '10:00', end: '18:00', label: '', color: 'blue', isOff: false, isAnnualLeave: false });
-            const [newEmp, setNewEmp] = useState({ name: '', role: '' });
-            const [editingEmployee, setEditingEmployee] = useState(null);
             const [reportMonth, setReportMonth] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; });
 
             useEffect(() => {
-                const loader = document.getElementById('loading-overlay');
-                if(loader) loader.style.display = 'none';
+                if (firebaseConfig.apiKey === "API_ANAHTARINI_BURAYA_YAZIN" || firebaseConfig.apiKey === "") {
+                    const l = document.getElementById('loading-text');
+                    if(l) l.innerHTML = "Firebase API Bilgileri Bekleniyor...";
+                    return;
+                }
+
+                if (!window.firebase.apps.length) {
+                    window.firebase.initializeApp(firebaseConfig);
+                }
+
+                const unsubscribe = window.firebase.auth().onAuthStateChanged((user) => {
+                    setAuthUser(user);
+                    setAuthLoading(false);
+                    const l = document.getElementById('loading-overlay');
+                    if(l) l.style.display = 'none';
+                });
+
+                return () => unsubscribe();
             }, []);
 
             const handleLoginSubmit = (e) => { 
                 e.preventDefault(); 
-                if (loginPass === getSecret()) { 
-                    localStorage.setItem('cinarcik_auth_hash', btoa(getSecret())); 
-                    setIsAuthenticated(true); 
-                    setLoginError(false); 
-                } else { 
-                    setLoginError(true); 
-                } 
+                setLoginError(false);
+                setLoginErrorMsg("");
+                setIsLoginProcessing(true);
+
+                window.firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, loginPass)
+                    .then(() => {
+                        setIsLoginProcessing(false);
+                    })
+                    .catch((error) => {
+                        setLoginError(true);
+                        setLoginErrorMsg("E-posta veya şifre hatalı!");
+                        setIsLoginProcessing(false);
+                    });
+            };
+
+            const handleLogout = () => {
+                window.firebase.auth().signOut().then(() => {
+                    setDataLoaded(false);
+                });
             };
 
             useEffect(() => { 
-                if (!isAuthenticated || !firebaseConfig.apiKey) return;
+                if (!authUser) return;
                 
-                if (!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
                 const db = window.firebase.firestore();
 
                 const unsub = db.collection("restoran").doc("cinarcik_merkez").onSnapshot((doc) => {
@@ -321,10 +255,12 @@
                             shifts: {}, rates: {}, advances: {}, lastUpdated: new Date().toISOString(), lastAction: "Sistem Başlatıldı"
                         });
                     }
-                }, console.error);
+                }, (error) => {
+                    alert("Veritabanına erişim reddedildi.");
+                });
 
                 const pRef = db.collection("restoran").doc("cinarcik_merkez").collection("presence").doc(sessionId);
-                const updateP = () => pRef.set({ lastActive: Date.now() }).catch(console.error);
+                const updateP = () => pRef.set({ lastActive: Date.now() }, {merge: true}).catch(() => {});
                 updateP(); 
                 const iId = setInterval(updateP, 30000);
                 
@@ -338,10 +274,10 @@
                 });
 
                 return () => { unsub(); clearInterval(iId); window.removeEventListener('beforeunload', hUnload); pRef.delete(); unsubP(); };
-            }, [isAuthenticated, sessionId]);
+            }, [authUser, sessionId]);
 
             useEffect(() => {
-                if (dataLoaded && isAuthenticated) {
+                if (dataLoaded && authUser) {
                     const cMonth = new Date().toISOString().slice(0, 7);
                     if (!sessionStorage.getItem('reminder_shown_' + cMonth)) {
                         const d = new Date(), last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
@@ -361,13 +297,15 @@
                         }
                     }
                 }
-            }, [dataLoaded, isAuthenticated, employees, shifts]);
+            }, [dataLoaded, authUser, employees, shifts]);
 
             const getDb = () => window.firebase.firestore().collection("restoran").doc("cinarcik_merkez");
             const pushToDb = (data, actionText = "") => {
                 const payload = { ...data, lastUpdated: new Date().toISOString() };
                 if (actionText) payload.lastAction = actionText;
-                getDb().set(payload, { merge: true });
+                getDb().set(payload, { merge: true }).catch(err => {
+                    alert("Kayıt yapılamadı.");
+                });
             };
 
             const activeEmployeesForSchedule = useMemo(() => employees.filter(emp => emp.isActive !== false || (emp.leaveDate && emp.leaveDate >= weekStart)), [employees, weekStart]);
@@ -411,21 +349,21 @@
                 if (!hasAnnualLeaveRight) d.isAnnualLeave = false;
                 if (d.isOff) { d.color = 'red'; d.label = ''; d.isAnnualLeave = false; } else if (d.isAnnualLeave) { d.color = 'amber'; d.label = ''; d.isOff = false; }
                 setShifts(p => ({ ...p, [k]: d })); setModals(p => ({ ...p, shift: false }));
-                pushToDb({ shifts: { [k]: d } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: ${d.isAnnualLeave ? 'Yıllık İzin eklendi' : d.isOff ? 'İzin (OFF) eklendi' : 'Vardiya güncellendi'}`);
+                pushToDb({ shifts: { [k]: d } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: ${d.isAnnualLeave ? 'Yıllık İzin' : d.isOff ? 'İzin (OFF)' : 'Vardiya'}`);
             };
 
             const deleteShift = () => {
                 if (!activeCell) return;
                 const k = `${activeCell.empId}_${activeCell.date}`;
                 setShifts(p => { const n = { ...p }; delete n[k]; return n; }); setModals(p => ({ ...p, shift: false }));
-                pushToDb({ shifts: { [k]: window.firebase.firestore.FieldValue.delete() } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: Vardiya silindi`);
+                pushToDb({ shifts: { [k]: window.firebase.firestore.FieldValue.delete() } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: Silindi`);
             };
 
-            const addEmployee = () => { if (newEmp.name) { const ne = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel', isActive: true, joinDate: null, leaveDate: null }; setEmployees(p => { const n = [...p.filter(e => e.id !== 'example'), ne]; pushToDb({ employees: n }, `Yeni personel: ${ne.name}`); return n; }); setNewEmp({ name: '', role: '' }); } };
-            const saveEmployeeEdit = () => { if (editingEmployee?.name) { setEmployees(p => { const n = p.map(e => e.id === editingEmployee.id ? editingEmployee : e); pushToDb({ employees: n }, `Personel güncellendi: ${editingEmployee.name}`); return n; }); setEditingEmployee(null); } };
-            const removeEmployeePermanently = (id) => { const n = employees.find(e => e.id === id)?.name || 'Personel'; if (confirm('DİKKAT! Bu işlem personeli kalıcı olarak siler. Emin misiniz?')) { setEmployees(p => { const nx = p.filter(e => e.id !== id); pushToDb({ employees: nx }, `Personel silindi: ${n}`); return nx; }); setEditingEmployee(null); } };
-            const updateRate = (empId, val) => { const k = `${empId}_${reportMonth}`; setRates(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ rates: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Ücret güncellendi`); };
-            const updateAdvance = (empId, val) => { const k = `${empId}_${reportMonth}`; setAdvances(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ advances: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Avans güncellendi`); };
+            const addEmployee = () => { if (newEmp.name) { const ne = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel', isActive: true, joinDate: null, leaveDate: null }; setEmployees(p => { const n = [...p.filter(e => e.id !== 'example'), ne]; pushToDb({ employees: n }, `Yeni: ${ne.name}`); return n; }); setNewEmp({ name: '', role: '' }); } };
+            const saveEmployeeEdit = () => { if (editingEmployee?.name) { setEmployees(p => { const n = p.map(e => e.id === editingEmployee.id ? editingEmployee : e); pushToDb({ employees: n }, `Düzenlendi: ${editingEmployee.name}`); return n; }); setEditingEmployee(null); } };
+            const removeEmployeePermanently = (id) => { const n = employees.find(e => e.id === id)?.name || 'Personel'; if (confirm('Kalıcı olarak silinecek. Emin misiniz?')) { setEmployees(p => { const nx = p.filter(e => e.id !== id); pushToDb({ employees: nx }, `Silindi: ${n}`); return nx; }); setEditingEmployee(null); } };
+            const updateRate = (empId, val) => { const k = `${empId}_${reportMonth}`; setRates(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ rates: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Ücret`); };
+            const updateAdvance = (empId, val) => { const k = `${empId}_${reportMonth}`; setAdvances(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ advances: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Avans`); };
 
             const performExport = async (elementId, filename) => {
                 setLoading(true); await new Promise(r => setTimeout(r, 200));
@@ -471,18 +409,20 @@
                 );
             };
 
-            if (!isAuthenticated) return (
+            if (authLoading) return null;
+
+            if (!authUser) return (
                 <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-4">
                     <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-xs flex flex-col items-center animate-fade-in border border-slate-100">
                         <img src={LOGO_URL} className="w-24 h-24 rounded-2xl object-cover mb-5 shadow-sm border border-slate-100" alt="Logo" crossOrigin="anonymous"/>
                         <h2 className="text-2xl font-black text-slate-800 mb-1 tracking-tight">Çınarcık</h2>
-                        <p className="text-sm font-medium text-slate-500 mb-8 text-center flex items-center gap-1.5"><IconLock /> Yönetici Girişi</p>
-                        <form onSubmit={handleLoginSubmit} className="w-full flex flex-col gap-4">
-                            <div>
-                                <input type="password" value={loginPass} onChange={e => {setLoginPass(e.target.value); setLoginError(false);}} placeholder="Şifre" className={`w-full p-4 bg-slate-50 border-2 rounded-xl text-center font-black text-xl tracking-widest outline-none transition-all ${loginError ? 'border-red-400 text-red-600 bg-red-50/50' : 'border-slate-200 focus:border-blue-500 focus:bg-white text-slate-800'}`} autoFocus />
-                                {loginError && <p className="text-[11px] text-red-500 font-bold text-center mt-2 animate-fade-in">Hatalı şifre, lütfen tekrar deneyin.</p>}
-                            </div>
-                            <button type="submit" className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200 mt-2">Giriş Yap</button>
+                        <p className="text-sm font-medium text-slate-500 mb-6 text-center flex items-center gap-1.5"><IconLock /> Sistem Girişi</p>
+                        <form onSubmit={handleLoginSubmit} className="w-full flex flex-col gap-3">
+                            <input type="password" value={loginPass} onChange={e => {setLoginPass(e.target.value); setLoginError(false);}} placeholder="Şifre" className={`w-full p-4 bg-slate-50 border-2 rounded-xl text-center font-black text-xl tracking-widest outline-none transition-all ${loginError ? 'border-red-400 text-red-600 bg-red-50/50' : 'border-slate-200 focus:border-blue-500 focus:bg-white text-slate-800'}`} required />
+                            {loginError && <p className="text-[11px] text-red-500 font-bold text-center animate-fade-in">{loginErrorMsg}</p>}
+                            <button type="submit" disabled={isLoginProcessing} className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200 mt-2 flex justify-center items-center h-[56px]">
+                                {isLoginProcessing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Giriş Yap"}
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -491,7 +431,7 @@
             if (!dataLoaded) return (
                 <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-4">
                     <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <p className="text-slate-500 font-bold text-sm text-center animate-pulse">Veritabanına Bağlanıyor...</p>
+                    <p className="text-slate-500 font-bold text-sm text-center animate-pulse">Güvenli Veritabanına Bağlanıyor...</p>
                 </div>
             );
 
@@ -516,7 +456,7 @@
                                     <button onClick={() => setModals({...modals, salary: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Maaş"><IconWallet /></button>
                                     <button onClick={() => setModals({...modals, report: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Rapor"><IconChart /></button>
                                     <button onClick={() => setModals({...modals, team: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Ekip"><IconUsers /></button>
-                                    <button onClick={exportSchedule} className="p-2 text-slate-500 hover:text-blue-600 bg-slate-50 rounded-lg transition-all border border-transparent hover:border-slate-200">{loading ? <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div> : <IconImage />}</button>
+                                    <button onClick={() => performExport('schedule-table-container', `Vardiya_${weekStart}.png`)} className="p-2 text-slate-500 hover:text-blue-600 bg-slate-50 rounded-lg transition-all border border-transparent hover:border-slate-200">{loading ? <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div> : <IconImage />}</button>
                                 </div>
                             </div>
                         </div>
@@ -563,7 +503,7 @@
                             </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0 px-2 border-l border-slate-200" title="Aktif Yönetici Sayısı"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span className="font-bold text-slate-600">{onlineUsers} Çevrimiçi</span></div>
-                        <button onClick={() => {localStorage.removeItem('cinarcik_auth_hash'); window.location.reload();}} className="shrink-0 text-slate-400 hover:text-red-500 underline ml-auto">Çıkış Yap</button>
+                        <button onClick={handleLogout} className="shrink-0 text-slate-400 hover:text-red-500 underline ml-auto">Güvenli Çıkış</button>
                     </div>
 
                     <Modal isOpen={!!reminderData} onClose={() => setReminderData(null)} title="Ay Sonu Hatırlatıcısı">
@@ -580,15 +520,15 @@
                     <Modal isOpen={modals.shift} onClose={() => setModals({...modals, shift: false})} title="Vardiya Düzenle">
                         <div className="space-y-5">
                             <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                                <button onClick={() => setEditData({...editData, isOff: false, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${!editData.isOff && (!editData.isAnnualLeave || !hasAnnualLeaveRight) ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Mesai</button>
+                                <button onClick={() => setEditData({...editData, isOff: false, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${!editData.isOff && (!editData.isAnnualLeave || !currentEmpLeaveInfo?.hasRight) ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Mesai</button>
                                 <button onClick={() => setEditData({...editData, isOff: true, isAnnualLeave: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${editData.isOff ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>OFF (İzin)</button>
-                                {hasAnnualLeaveRight && <button onClick={() => setEditData({...editData, isAnnualLeave: true, isOff: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${editData.isAnnualLeave ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Yıllık İzin</button>}
+                                {currentEmpLeaveInfo?.hasRight && <button onClick={() => setEditData({...editData, isAnnualLeave: true, isOff: false})} className={`flex-1 py-2.5 rounded-lg text-[11px] font-bold transition-all ${editData.isAnnualLeave ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Yıllık İzin</button>}
                             </div>
-                            {!editData.isOff && (!editData.isAnnualLeave || !hasAnnualLeaveRight) ? (
+                            {!editData.isOff && (!editData.isAnnualLeave || !currentEmpLeaveInfo?.hasRight) ? (
                                 <div className="space-y-4 animate-fade-in">
-                                    <div className="flex flex-col xs:flex-row gap-3"><TimeSelector label="BAŞLANGIÇ" value={editData.start} onChange={v => setEditData({...editData, start: v})} /><TimeSelector label="BİTİŞ" value={editData.end} onChange={v => setEditData({...editData, end: v})} /></div>
-                                    <div><label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Etiket</label><input type="text" value={editData.label} onChange={e => setEditData({...editData, label: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-blue-500" placeholder="Örn: Kapanış, Hazırlık..." /></div>
-                                    <div><label className="text-[10px] font-bold text-gray-500 uppercase mb-2 block">Renk</label><div className="flex justify-between gap-1 overflow-x-auto pb-1">{['blue', 'green', 'yellow', 'purple', 'red'].map(c => (<button key={c} onClick={() => setEditData({...editData, color: c})} className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-transform ${editData.color === c ? 'scale-110 ring-2 ring-offset-2 ring-gray-300' : 'opacity-60'} ${c === 'blue' ? 'bg-blue-500' : c === 'green' ? 'bg-emerald-500' : c === 'yellow' ? 'bg-amber-500' : c === 'purple' ? 'bg-purple-500' : 'bg-rose-500'}`}>{editData.color === c && <div className="text-white"><IconCheck /></div>}</button>))}</div></div>
+                                    <div className="flex flex-col xs:flex-row gap-3"><TimeUI label="BAŞLANGIÇ" val={editData.start} onChange={v => setEditData({...editData, start: v})} /><TimeUI label="BİTİŞ" val={editData.end} onChange={v => setEditData({...editData, end: v})} /></div>
+                                    <div><label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Etiket</label><InputUI type="text" value={editData.label} onChange={e => setEditData({...editData, label: e.target.value})} placeholder="Örn: Kapanış, Hazırlık..." /></div>
+                                    <div><label className="text-[10px] font-bold text-gray-500 uppercase mb-2 block">Renk</label><div className="flex justify-between gap-1 overflow-x-auto pb-1">{['blue', 'green', 'yellow', 'purple', 'red'].map(c => (<button key={c} onClick={() => setEditData({...editData, color: c})} className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-transform ${editData.color === c ? 'scale-110 ring-2 ring-offset-2 ring-gray-300' : 'opacity-60'} bg-${c === 'blue' ? 'blue' : c === 'green' ? 'emerald' : c === 'yellow' ? 'amber' : c === 'purple' ? 'purple' : 'rose'}-500`}>{editData.color === c && <div className="text-white"><IconCheck /></div>}</button>))}</div></div>
                                 </div>
                             ) : editData.isOff ? ( <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center text-sm font-medium border border-red-100 animate-fade-in">Bu gün personel haftalık izinli (OFF) sayılacaktır.</div>
                             ) : ( <div className="p-4 bg-amber-50 text-amber-600 rounded-xl text-center text-sm font-medium border border-amber-100 animate-fade-in">Bu gün personel "Yıllık İzinli" sayılacaktır ve toplam izninden düşülecektir.</div> )}
@@ -600,9 +540,9 @@
                         <div className="space-y-4">
                             {editingEmployee ? (
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4 animate-fade-in">
-                                    <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Personel Adı</label><input type="text" value={editingEmployee.name} onChange={e => setEditingEmployee({...editingEmployee, name: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" /></div>
-                                    <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Rol / Etiket</label><input type="text" value={editingEmployee.role} onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" /></div>
-                                    <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">İşe Başlama Tarihi</label><input type="date" value={editingEmployee.joinDate || ''} onChange={e => setEditingEmployee({...editingEmployee, joinDate: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Personel Adı</label><InputUI type="text" value={editingEmployee.name} onChange={e => setEditingEmployee({...editingEmployee, name: e.target.value})} /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Rol / Etiket</label><InputUI type="text" value={editingEmployee.role} onChange={e => setEditingEmployee({...editingEmployee, role: e.target.value})} /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">İşe Başlama Tarihi</label><InputUI type="date" value={editingEmployee.joinDate || ''} onChange={e => setEditingEmployee({...editingEmployee, joinDate: e.target.value})} /></div>
                                     {editingEmployee.joinDate ? (
                                         <div className="bg-amber-50 border border-amber-100 p-3 rounded-lg">
                                             <div className="flex justify-between items-center mb-2"><h5 className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1"><IconSun /> Yıllık İzin Durumu</h5><span className="text-[10px] font-bold text-amber-700 bg-amber-200 px-1.5 py-0.5 rounded">Kıdem: {calculateLeaveInfo(editingEmployee.id, editingEmployee.joinDate, editingEmployee.leaveDate, editingEmployee.isActive, shifts)?.text}</span></div>
@@ -625,18 +565,18 @@
                                     {editingEmployee.isActive === false && (
                                         <div className="animate-fade-in pt-2">
                                             <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Ayrılma Tarihi</label>
-                                            <input type="date" value={editingEmployee.leaveDate || ''} onChange={e => setEditingEmployee({...editingEmployee, leaveDate: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-red-500 border-red-200" />
+                                            <InputUI type="date" value={editingEmployee.leaveDate || ''} onChange={e => setEditingEmployee({...editingEmployee, leaveDate: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-red-500 border-red-200" />
                                             <p className="text-[10px] text-slate-400 mt-1">Bu tarihten sonraki vardiyalar maaş hesaplamasına dahil edilmez.</p>
                                         </div>
                                     )}
                                     <div className="flex gap-2 pt-2"><button onClick={() => setEditingEmployee(null)} className="flex-1 py-2.5 bg-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-300 transition-colors text-sm">İptal</button><button onClick={saveEmployeeEdit} className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors text-sm">Kaydet</button></div>
-                                    <div className="pt-4 mt-2 border-t border-slate-200"><button onClick={() => removeEmployeePermanently(editingEmployee.id)} className="w-full text-red-500 hover:bg-red-50 font-bold text-xs py-2 rounded-lg transition-colors">Kalıcı Olarak Sil (Tüm Geçmişi Siler)</button></div>
+                                    <div className="pt-4 mt-2 border-t border-slate-200"><button onClick={() => removeEmployeePermanently(editingEmployee.id)} className="w-full text-red-500 hover:bg-red-50 font-bold text-xs py-2 rounded-lg transition-colors">Kalıcı Olarak Sil</button></div>
                                 </div>
                             ) : (
                                 <>
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
-                                        <input type="text" value={newEmp.name} onChange={e => setNewEmp({...newEmp, name: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Yeni Personel Adı" />
-                                        <input type="text" value={newEmp.role} onChange={e => setNewEmp({...newEmp, role: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:border-blue-500" placeholder="Rol (Garson, vb.)" />
+                                        <InputUI type="text" value={newEmp.name} onChange={e => setNewEmp({...newEmp, name: e.target.value})} placeholder="Yeni Personel Adı" />
+                                        <InputUI type="text" value={newEmp.role} onChange={e => setNewEmp({...newEmp, role: e.target.value})} placeholder="Rol (Garson, vb.)" />
                                         <button onClick={addEmployee} disabled={!newEmp.name} className="w-full py-2.5 bg-blue-600 text-white font-bold rounded-lg disabled:opacity-50 hover:bg-blue-700 transition-colors text-sm">Ekle</button>
                                     </div>
                                     <div className="max-h-52 overflow-y-auto pr-1">
@@ -660,23 +600,18 @@
 
                     <Modal isOpen={modals.report} onClose={() => setModals({...modals, report: false})} title="Aylık Rapor">
                         <div id="report-container" className="space-y-4">
-                            <div className="flex flex-col xs:flex-row gap-3 justify-between items-start xs:items-center bg-slate-50 p-3 rounded-xl"><MonthSelector value={reportMonth} onChange={setReportMonth} /><button onClick={exportReport} className="text-xs font-bold bg-slate-800 text-white px-3 py-2 rounded-lg hover:bg-slate-700 w-full xs:w-auto">İndir</button></div>
+                            <div className="flex flex-col xs:flex-row gap-3 justify-between items-start xs:items-center bg-slate-50 p-3 rounded-xl"><MonthSelector value={reportMonth} onChange={setReportMonth} /><button onClick={() => performExport('report-container', `Rapor_${reportMonth}.png`)} className="text-xs font-bold bg-slate-800 text-white px-3 py-2 rounded-lg hover:bg-slate-700 w-full xs:w-auto">İndir</button></div>
                             <div className="overflow-x-auto pb-2">
                                 <table className="w-full text-sm text-left whitespace-nowrap">
                                     <thead className="text-xs text-slate-500 uppercase bg-slate-100"><tr><th className="px-3 py-2 rounded-l-lg">Personel</th><th className="px-3 py-2 text-center">Saat</th><th className="px-3 py-2 text-center">Gün</th><th className="px-3 py-2 text-center">Y. İzin</th><th className="px-3 py-2 rounded-r-lg text-center">OFF</th></tr></thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {reportData.map(d => (
                                             <tr key={d.id} className={d.isActive === false ? "opacity-60 bg-slate-50" : ""}>
-                                                <td className="px-3 py-2 font-bold text-slate-800">
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center gap-1">{d.name} {d.isActive === false && <span className="text-[9px] text-red-600 bg-red-100 px-1 py-0.5 rounded">(Ayrıldı)</span>}</div>
-                                                        <div className="text-[10px] text-slate-500 font-medium mt-0.5 flex items-center flex-wrap">{d.joinDate && <span>Giriş: {formatDateTR(d.joinDate)}</span>}{d.isActive === false && d.leaveDate && <span className="text-red-500 ml-1">| Çıkış: {formatDateTR(d.leaveDate)}</span>}</div>
-                                                    </div>
-                                                </td>
+                                                <td className="px-3 py-2 font-bold text-slate-800"><EmpCell emp={d} /></td>
                                                 <td className="px-3 py-2 text-center font-bold text-blue-600">{d.totalHours}</td><td className="px-3 py-2 text-center text-slate-600">{d.totalShifts}</td><td className="px-3 py-2 text-center text-amber-600 font-bold">{d.totalAnnualLeave}</td><td className="px-3 py-2 text-center text-red-500 font-bold">{d.totalOff}</td>
                                             </tr>
                                         ))}
-                                        {reportData.length === 0 && <tr><td colSpan="5" className="text-center p-4 text-slate-400">Bu aya ait veri bulunamadı.</td></tr>}
+                                        {reportData.length === 0 && <tr><td colSpan="5" className="text-center p-4 text-slate-400">Veri bulunamadı.</td></tr>}
                                     </tbody>
                                 </table>
                             </div>
@@ -685,19 +620,14 @@
 
                     <Modal isOpen={modals.salary} onClose={() => setModals({...modals, salary: false})} title="Maaş Hesaplama" maxWidth="max-w-2xl">
                         <div id="salary-container" className="space-y-4">
-                            <div className="flex flex-col xs:flex-row gap-3 justify-between items-start xs:items-center bg-slate-50 p-3 rounded-xl"><MonthSelector value={reportMonth} onChange={setReportMonth} /><button onClick={exportSalary} className="text-xs font-bold bg-slate-800 text-white px-3 py-2 rounded-lg hover:bg-slate-700 w-full xs:w-auto">İndir</button></div>
+                            <div className="flex flex-col xs:flex-row gap-3 justify-between items-start xs:items-center bg-slate-50 p-3 rounded-xl"><MonthSelector value={reportMonth} onChange={setReportMonth} /><button onClick={() => performExport('salary-container', `Maas_${reportMonth}.png`)} className="text-xs font-bold bg-slate-800 text-white px-3 py-2 rounded-lg hover:bg-slate-700 w-full xs:w-auto">İndir</button></div>
                             <div className="overflow-x-auto pb-2">
                                 <table className="w-full text-sm text-left whitespace-nowrap">
                                     <thead className="text-xs text-slate-500 uppercase bg-slate-100"><tr><th className="px-3 py-2 rounded-l-lg">Personel</th><th className="px-3 py-2 text-center">Saat</th><th className="px-3 py-2 text-center">Y. İzin</th><th className="px-3 py-2 text-center">Ücret/S</th><th className="px-3 py-2 text-right">Hakediş</th><th className="px-3 py-2 text-center">Avans</th><th className="px-3 py-2 rounded-r-lg text-right">Kalan</th></tr></thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {reportData.map(d => (
                                             <tr key={d.id} className={d.isActive === false ? "opacity-60 bg-slate-50" : ""}>
-                                                <td className="px-3 py-2 font-bold text-slate-800">
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center gap-1">{d.name} {d.isActive === false && <span className="text-[9px] text-red-600 bg-red-100 px-1 py-0.5 rounded">(Ayrıldı)</span>}</div>
-                                                        <div className="text-[10px] text-slate-500 font-medium mt-0.5 flex items-center flex-wrap">{d.joinDate && <span>Giriş: {formatDateTR(d.joinDate)}</span>}{d.isActive === false && d.leaveDate && <span className="text-red-500 ml-1">| Çıkış: {formatDateTR(d.leaveDate)}</span>}</div>
-                                                    </div>
-                                                </td>
+                                                <td className="px-3 py-2 font-bold text-slate-800"><EmpCell emp={d} /></td>
                                                 <td className="px-3 py-2 text-center text-slate-600">{d.totalHours}</td><td className="px-3 py-2 text-center text-amber-600 font-bold">{d.totalAnnualLeave}</td>
                                                 <td className="px-3 py-2 text-center"><input type="number" value={rates[`${d.id}_${reportMonth}`]||''} onChange={(e) => updateRate(d.id, e.target.value)} placeholder="0" className="w-16 p-1 text-center border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent font-bold"/></td>
                                                 <td className="px-3 py-2 text-right text-slate-500 font-medium">{formatMoney(d.grossSalary)}</td>
