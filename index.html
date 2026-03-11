@@ -22,7 +22,6 @@
         input[type="time"]::-webkit-calendar-picker-indicator { background: transparent; bottom: 0; color: transparent; cursor: pointer; height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto; }
     </style>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -32,13 +31,16 @@
 <body>
     <div id="loading-overlay">
         <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-slate-500 font-bold text-sm text-center px-4" id="loading-text">Güvenli Bağlantı Kuruluyor...</p>
+        <p class="text-slate-500 font-bold text-sm text-center px-4" id="loading-text">Uygulama Başlatılıyor...</p>
     </div>
     <div id="root" class="h-screen w-screen overflow-hidden flex flex-col"></div>
     <script>
         window.onerror = function(msg) {
             const overlay = document.getElementById('loading-overlay');
-            if(overlay) overlay.innerHTML = `<div style="color:red;padding:20px;text-align:center"><strong>Hata:</strong><br>${msg}<br><button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#ef4444;color:white;border-radius:6px;font-weight:bold">Yenile</button></div>`;
+            if(overlay) {
+                overlay.style.display = 'flex';
+                overlay.innerHTML = `<div style="color:red;padding:20px;text-align:center"><strong>Hata:</strong><br>${msg}<br><button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#ef4444;color:white;border-radius:6px;font-weight:bold">Yenile</button></div>`;
+            }
             return false;
         };
     </script>
@@ -52,10 +54,9 @@
   appId: "1:1017027894809:web:860b1345a7dad1f696d488"
         };
 
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
 
         const LOGO_URL = "https://raw.githubusercontent.com/Berahatiye/rose/refs/heads/main/rosecafelogo.webp";
-        const ADMIN_EMAIL = "yonetici@cinarcik.com";
         const getSecret = () => String.fromCharCode(49, 51, 48, 56, 56, 52);
 
         const IconCalendar = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
@@ -68,7 +69,7 @@
         const IconChevron = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>;
         const IconCloudSync = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>;
         const IconClock = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
-        const IconSettings = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+        const IconSettings = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
         const IconAlert = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
         const IconSun = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
         const IconLock = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
@@ -157,13 +158,28 @@
             </div>
         );
 
+        class ErrorBoundary extends React.Component {
+            constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+            static getDerivedStateFromError(error) { return { hasError: true, error }; }
+            componentDidCatch(error, errorInfo) { console.error(error, errorInfo); }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div style={{padding:'20px', color:'#b91c1c', textAlign:'center', marginTop:'50px', fontFamily:'sans-serif'}}>
+                            <h2 style={{fontSize:'20px', fontWeight:'bold'}}>Beklenmeyen Bir Hata Oluştu</h2>
+                            <p style={{marginTop:'10px', fontSize:'12px'}}>{this.state.error && this.state.error.toString()}</p>
+                            <button onClick={() => window.location.reload()} style={{marginTop:'20px', padding:'10px 20px', background:'#0f172a', color:'white', borderRadius:'8px', fontWeight:'bold'}}>Sayfayı Yenile</button>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
         const App = () => {
-            const [authUser, setAuthUser] = useState(null);
-            const [authLoading, setAuthLoading] = useState(true);
+            const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('cinarcik_auth_hash') === btoa(getSecret()));
             const [loginPass, setLoginPass] = useState('');
             const [loginError, setLoginError] = useState(false);
-            const [isLoginProcessing, setIsLoginProcessing] = useState(false);
-            const [loginErrorMsg, setLoginErrorMsg] = useState("");
 
             const [employees, setEmployees] = useState([]);
             const [shifts, setShifts] = useState({});
@@ -196,52 +212,35 @@
             const [reportMonth, setReportMonth] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; });
 
             useEffect(() => {
-                if (firebaseConfig.apiKey === "API_ANAHTARINI_BURAYA_YAZIN" || firebaseConfig.apiKey === "") {
-                    const l = document.getElementById('loading-text');
-                    if(l) l.innerHTML = "Firebase API Bilgileri Bekleniyor...";
-                    return;
-                }
-
-                if (!window.firebase.apps.length) {
-                    window.firebase.initializeApp(firebaseConfig);
-                }
-
-                const unsubscribe = window.firebase.auth().onAuthStateChanged((user) => {
-                    setAuthUser(user);
-                    setAuthLoading(false);
-                    const l = document.getElementById('loading-overlay');
-                    if(l) l.style.display = 'none';
-                });
-
-                return () => unsubscribe();
+                const loader = document.getElementById('loading-overlay');
+                if(loader) loader.style.display = 'none';
             }, []);
 
             const handleLoginSubmit = (e) => { 
                 e.preventDefault(); 
-                setLoginError(false);
-                setLoginErrorMsg("");
-                setIsLoginProcessing(true);
-
-                window.firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, loginPass)
-                    .then(() => {
-                        setIsLoginProcessing(false);
-                    })
-                    .catch((error) => {
-                        setLoginError(true);
-                        setLoginErrorMsg("E-posta veya şifre hatalı!");
-                        setIsLoginProcessing(false);
-                    });
+                if (loginPass === getSecret()) { 
+                    localStorage.setItem('cinarcik_auth_hash', btoa(getSecret())); 
+                    setIsAuthenticated(true); 
+                    setLoginError(false); 
+                } else { 
+                    setLoginError(true); 
+                } 
             };
 
             const handleLogout = () => {
-                window.firebase.auth().signOut().then(() => {
-                    setDataLoaded(false);
-                });
+                localStorage.removeItem('cinarcik_auth_hash');
+                window.location.reload();
             };
 
             useEffect(() => { 
-                if (!authUser) return;
+                if (!isAuthenticated) return;
                 
+                if (firebaseConfig.apiKey === "API_ANAHTARINI_BURAYA_YAZIN" || firebaseConfig.apiKey === "") {
+                    alert("Lütfen Firebase yapılandırma bilgilerinizi koda ekleyin!");
+                    return;
+                }
+
+                if (!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
                 const db = window.firebase.firestore();
 
                 const unsub = db.collection("restoran").doc("cinarcik_merkez").onSnapshot((doc) => {
@@ -256,7 +255,8 @@
                         });
                     }
                 }, (error) => {
-                    alert("Veritabanına erişim reddedildi.");
+                    console.error(error);
+                    alert("Veritabanı bağlantı hatası!");
                 });
 
                 const pRef = db.collection("restoran").doc("cinarcik_merkez").collection("presence").doc(sessionId);
@@ -274,10 +274,10 @@
                 });
 
                 return () => { unsub(); clearInterval(iId); window.removeEventListener('beforeunload', hUnload); pRef.delete(); unsubP(); };
-            }, [authUser, sessionId]);
+            }, [isAuthenticated, sessionId]);
 
             useEffect(() => {
-                if (dataLoaded && authUser) {
+                if (dataLoaded && isAuthenticated) {
                     const cMonth = new Date().toISOString().slice(0, 7);
                     if (!sessionStorage.getItem('reminder_shown_' + cMonth)) {
                         const d = new Date(), last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
@@ -297,14 +297,14 @@
                         }
                     }
                 }
-            }, [dataLoaded, authUser, employees, shifts]);
+            }, [dataLoaded, isAuthenticated, employees, shifts]);
 
             const getDb = () => window.firebase.firestore().collection("restoran").doc("cinarcik_merkez");
             const pushToDb = (data, actionText = "") => {
                 const payload = { ...data, lastUpdated: new Date().toISOString() };
                 if (actionText) payload.lastAction = actionText;
                 getDb().set(payload, { merge: true }).catch(err => {
-                    alert("Kayıt yapılamadı.");
+                    console.error(err);
                 });
             };
 
@@ -349,21 +349,21 @@
                 if (!hasAnnualLeaveRight) d.isAnnualLeave = false;
                 if (d.isOff) { d.color = 'red'; d.label = ''; d.isAnnualLeave = false; } else if (d.isAnnualLeave) { d.color = 'amber'; d.label = ''; d.isOff = false; }
                 setShifts(p => ({ ...p, [k]: d })); setModals(p => ({ ...p, shift: false }));
-                pushToDb({ shifts: { [k]: d } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: ${d.isAnnualLeave ? 'Yıllık İzin' : d.isOff ? 'İzin (OFF)' : 'Vardiya'}`);
+                pushToDb({ shifts: { [k]: d } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: ${d.isAnnualLeave ? 'Yıllık İzin' : d.isOff ? 'İzin (OFF)' : 'Vardiya güncellendi'}`);
             };
 
             const deleteShift = () => {
                 if (!activeCell) return;
                 const k = `${activeCell.empId}_${activeCell.date}`;
                 setShifts(p => { const n = { ...p }; delete n[k]; return n; }); setModals(p => ({ ...p, shift: false }));
-                pushToDb({ shifts: { [k]: window.firebase.firestore.FieldValue.delete() } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: Silindi`);
+                pushToDb({ shifts: { [k]: window.firebase.firestore.FieldValue.delete() } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: Vardiya silindi`);
             };
 
-            const addEmployee = () => { if (newEmp.name) { const ne = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel', isActive: true, joinDate: null, leaveDate: null }; setEmployees(p => { const n = [...p.filter(e => e.id !== 'example'), ne]; pushToDb({ employees: n }, `Yeni: ${ne.name}`); return n; }); setNewEmp({ name: '', role: '' }); } };
-            const saveEmployeeEdit = () => { if (editingEmployee?.name) { setEmployees(p => { const n = p.map(e => e.id === editingEmployee.id ? editingEmployee : e); pushToDb({ employees: n }, `Düzenlendi: ${editingEmployee.name}`); return n; }); setEditingEmployee(null); } };
-            const removeEmployeePermanently = (id) => { const n = employees.find(e => e.id === id)?.name || 'Personel'; if (confirm('Kalıcı olarak silinecek. Emin misiniz?')) { setEmployees(p => { const nx = p.filter(e => e.id !== id); pushToDb({ employees: nx }, `Silindi: ${n}`); return nx; }); setEditingEmployee(null); } };
-            const updateRate = (empId, val) => { const k = `${empId}_${reportMonth}`; setRates(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ rates: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Ücret`); };
-            const updateAdvance = (empId, val) => { const k = `${empId}_${reportMonth}`; setAdvances(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ advances: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Avans`); };
+            const addEmployee = () => { if (newEmp.name) { const ne = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel', isActive: true, joinDate: null, leaveDate: null }; setEmployees(p => { const n = [...p.filter(e => e.id !== 'example'), ne]; pushToDb({ employees: n }, `Yeni personel: ${ne.name}`); return n; }); setNewEmp({ name: '', role: '' }); } };
+            const saveEmployeeEdit = () => { if (editingEmployee?.name) { setEmployees(p => { const n = p.map(e => e.id === editingEmployee.id ? editingEmployee : e); pushToDb({ employees: n }, `Personel güncellendi: ${editingEmployee.name}`); return n; }); setEditingEmployee(null); } };
+            const removeEmployeePermanently = (id) => { const n = employees.find(e => e.id === id)?.name || 'Personel'; if (confirm('Kalıcı olarak silinecek. Emin misiniz?')) { setEmployees(p => { const nx = p.filter(e => e.id !== id); pushToDb({ employees: nx }, `Personel silindi: ${n}`); return nx; }); setEditingEmployee(null); } };
+            const updateRate = (empId, val) => { const k = `${empId}_${reportMonth}`; setRates(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ rates: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Ücret güncellendi`); };
+            const updateAdvance = (empId, val) => { const k = `${empId}_${reportMonth}`; setAdvances(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ advances: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Avans güncellendi`); };
 
             const performExport = async (elementId, filename) => {
                 setLoading(true); await new Promise(r => setTimeout(r, 200));
@@ -379,7 +379,7 @@
                 try {
                     const canvas = await html2canvas(c, { scale: 2, backgroundColor: "#ffffff", useCORS: true, allowTaint: true, width: 1400, windowWidth: 1400 });
                     const link = document.createElement('a'); link.download = filename; link.href = canvas.toDataURL("image/png"); link.click();
-                } catch(e) { alert("Dışa aktarma hatası."); } finally { document.body.removeChild(c); setLoading(false); }
+                } catch(e) {} finally { document.body.removeChild(c); setLoading(false); }
             };
 
             const exportSchedule = () => performExport('schedule-table-container', `Vardiya_${weekStart}.png`);
@@ -409,19 +409,19 @@
                 );
             };
 
-            if (authLoading) return null;
-
-            if (!authUser) return (
+            if (!isAuthenticated) return (
                 <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-4">
                     <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-xs flex flex-col items-center animate-fade-in border border-slate-100">
                         <img src={LOGO_URL} className="w-24 h-24 rounded-2xl object-cover mb-5 shadow-sm border border-slate-100" alt="Logo" crossOrigin="anonymous"/>
                         <h2 className="text-2xl font-black text-slate-800 mb-1 tracking-tight">Çınarcık</h2>
-                        <p className="text-sm font-medium text-slate-500 mb-6 text-center flex items-center gap-1.5"><IconLock /> Sistem Girişi</p>
-                        <form onSubmit={handleLoginSubmit} className="w-full flex flex-col gap-3">
-                            <input type="password" value={loginPass} onChange={e => {setLoginPass(e.target.value); setLoginError(false);}} placeholder="Şifre" className={`w-full p-4 bg-slate-50 border-2 rounded-xl text-center font-black text-xl tracking-widest outline-none transition-all ${loginError ? 'border-red-400 text-red-600 bg-red-50/50' : 'border-slate-200 focus:border-blue-500 focus:bg-white text-slate-800'}`} required />
-                            {loginError && <p className="text-[11px] text-red-500 font-bold text-center animate-fade-in">{loginErrorMsg}</p>}
-                            <button type="submit" disabled={isLoginProcessing} className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200 mt-2 flex justify-center items-center h-[56px]">
-                                {isLoginProcessing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Giriş Yap"}
+                        <p className="text-sm font-medium text-slate-500 mb-8 text-center flex items-center gap-1.5"><IconLock /> Yönetici Girişi</p>
+                        <form onSubmit={handleLoginSubmit} className="w-full flex flex-col gap-4">
+                            <div>
+                                <input type="password" value={loginPass} onChange={e => {setLoginPass(e.target.value); setLoginError(false);}} placeholder="Şifre" className={`w-full p-4 bg-slate-50 border-2 rounded-xl text-center font-black text-xl tracking-widest outline-none transition-all ${loginError ? 'border-red-400 text-red-600 bg-red-50/50' : 'border-slate-200 focus:border-blue-500 focus:bg-white text-slate-800'}`} autoFocus />
+                                {loginError && <p className="text-[11px] text-red-500 font-bold text-center mt-2 animate-fade-in">Hatalı şifre, lütfen tekrar deneyin.</p>}
+                            </div>
+                            <button type="submit" className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200 mt-2 flex justify-center items-center h-[56px]">
+                                Giriş Yap
                             </button>
                         </form>
                     </div>
@@ -431,7 +431,7 @@
             if (!dataLoaded) return (
                 <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-4">
                     <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <p className="text-slate-500 font-bold text-sm text-center animate-pulse">Güvenli Veritabanına Bağlanıyor...</p>
+                    <p className="text-slate-500 font-bold text-sm text-center animate-pulse">Veritabanına Bağlanıyor...</p>
                 </div>
             );
 
@@ -503,7 +503,7 @@
                             </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0 px-2 border-l border-slate-200" title="Aktif Yönetici Sayısı"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span className="font-bold text-slate-600">{onlineUsers} Çevrimiçi</span></div>
-                        <button onClick={handleLogout} className="shrink-0 text-slate-400 hover:text-red-500 underline ml-auto">Güvenli Çıkış</button>
+                        <button onClick={handleLogout} className="shrink-0 text-slate-400 hover:text-red-500 underline ml-auto">Çıkış Yap</button>
                     </div>
 
                     <Modal isOpen={!!reminderData} onClose={() => setReminderData(null)} title="Ay Sonu Hatırlatıcısı">
@@ -648,7 +648,7 @@
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        root.render(<ErrorBoundary><App /></ErrorBoundary>);
     </script>
 </body>
 </html>
