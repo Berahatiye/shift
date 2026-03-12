@@ -291,7 +291,12 @@
                 }
             };
 
-            const handleLogout = () => {
+            const handleLogout = async () => {
+                try {
+                    const db = window.firebase.firestore();
+                    await db.collection("restoran").doc("cinarcik_merkez").collection("presence").doc(sessionId).delete();
+                } catch (e) {}
+                
                 window.firebase.auth().signOut().then(() => {
                     window.location.reload();
                 });
@@ -329,7 +334,7 @@
                 const unsubP = db.collection("restoran").doc("cinarcik_merkez").collection("presence").onSnapshot(snap => {
                     const now = Date.now(); let count = 0;
                     snap.forEach(doc => { const d = doc.data(); if (d?.lastActive && (now - d.lastActive < 90000)) count++; });
-                    setOnlineUsers(count || 1);
+                    setOnlineUsers(Math.max(1, count));
                 });
 
                 return () => { unsub(); clearInterval(iId); window.removeEventListener('beforeunload', hUnload); pRef.delete(); unsubP(); };
