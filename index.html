@@ -298,7 +298,7 @@
                     if (error.message === 'wrong-password-hash' || error.code === 'auth/wrong-password') {
                         setLoginErrorMsg("Şifre hatalı.");
                     } else if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                        setLoginErrorMsg("Firebase'de kullanıcı tanımlı değil!");
+                        setLoginErrorMsg("Kullanıcı Firebase sistemine kaydedilmemiş.");
                     } else {
                         setLoginErrorMsg("Giriş yapılamadı.");
                     }
@@ -428,21 +428,21 @@
                 if (!hasAnnualLeaveRight) d.isAnnualLeave = false;
                 if (d.isOff) { d.color = 'red'; d.label = ''; d.isAnnualLeave = false; } else if (d.isAnnualLeave) { d.color = 'amber'; d.label = ''; d.isOff = false; }
                 setShifts(p => ({ ...p, [k]: d })); setModals(p => ({ ...p, shift: false }));
-                pushToDb({ shifts: { [k]: d } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: ${d.isAnnualLeave ? 'Yıllık İzin' : d.isOff ? 'İzin (OFF)' : 'Vardiya'}`);
+                pushToDb({ shifts: { [k]: d } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: ${d.isAnnualLeave ? 'Yıllık İzin eklendi' : d.isOff ? 'İzin (OFF) eklendi' : 'Vardiya güncellendi'}`);
             };
 
             const deleteShift = () => {
                 if (!activeCell) return;
                 const k = `${activeCell.empId}_${activeCell.date}`;
                 setShifts(p => { const n = { ...p }; delete n[k]; return n; }); setModals(p => ({ ...p, shift: false }));
-                pushToDb({ shifts: { [k]: window.firebase.firestore.FieldValue.delete() } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: Silindi`);
+                pushToDb({ shifts: { [k]: window.firebase.firestore.FieldValue.delete() } }, `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: Vardiya silindi`);
             };
 
-            const addEmployee = () => { if (newEmp.name) { const ne = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel', isActive: true, joinDate: null, leaveDate: null }; setEmployees(p => { const n = [...p.filter(e => e.id !== 'example'), ne]; pushToDb({ employees: n }, `Yeni: ${ne.name}`); return n; }); setNewEmp({ name: '', role: '' }); } };
-            const saveEmployeeEdit = () => { if (editingEmployee?.name) { setEmployees(p => { const n = p.map(e => e.id === editingEmployee.id ? editingEmployee : e); pushToDb({ employees: n }, `Düzenlendi: ${editingEmployee.name}`); return n; }); setEditingEmployee(null); } };
-            const removeEmployeePermanently = (id) => { const n = employees.find(e => e.id === id)?.name || 'Personel'; if (confirm('Kalıcı olarak silinecek. Emin misiniz?')) { setEmployees(p => { const nx = p.filter(e => e.id !== id); pushToDb({ employees: nx }, `Silindi: ${n}`); return nx; }); setEditingEmployee(null); } };
-            const updateRate = (empId, val) => { const k = `${empId}_${reportMonth}`; setRates(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ rates: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Ücret`); };
-            const updateAdvance = (empId, val) => { const k = `${empId}_${reportMonth}`; setAdvances(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ advances: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Avans`); };
+            const addEmployee = () => { if (newEmp.name) { const ne = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel', isActive: true, joinDate: null, leaveDate: null }; setEmployees(p => { const n = [...p.filter(e => e.id !== 'example'), ne]; pushToDb({ employees: n }, `Yeni personel eklendi: ${ne.name}`); return n; }); setNewEmp({ name: '', role: '' }); } };
+            const saveEmployeeEdit = () => { if (editingEmployee?.name) { setEmployees(p => { const n = p.map(e => e.id === editingEmployee.id ? editingEmployee : e); pushToDb({ employees: n }, `Personel güncellendi: ${editingEmployee.name}`); return n; }); setEditingEmployee(null); } };
+            const removeEmployeePermanently = (id) => { const n = employees.find(e => e.id === id)?.name || 'Personel'; if (confirm('Bu işlem personeli kalıcı olarak siler. Emin misiniz?')) { setEmployees(p => { const nx = p.filter(e => e.id !== id); pushToDb({ employees: nx }, `Personel silindi: ${n}`); return nx; }); setEditingEmployee(null); } };
+            const updateRate = (empId, val) => { const k = `${empId}_${reportMonth}`; setRates(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ rates: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Ücret güncellendi`); };
+            const updateAdvance = (empId, val) => { const k = `${empId}_${reportMonth}`; setAdvances(p => ({ ...p, [k]: parseFloat(val) || 0 })); pushToDb({ advances: { [k]: parseFloat(val) || 0 } }, `${employees.find(e => e.id === empId)?.name || 'Personel'}: Avans güncellendi`); };
 
             const performExport = async (elementId, filename) => {
                 setLoading(true); await new Promise(r => setTimeout(r, 200));
