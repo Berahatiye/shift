@@ -55,7 +55,7 @@
   appId: "1:1017027894809:web:860b1345a7dad1f696d488"
         };
 
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useRef } = React;
 
         const LOGO_URL = "https://raw.githubusercontent.com/Berahatiye/rose/refs/heads/main/rosecafelogo.webp";
         const DOMAIN_SUFFIX = "@cinarcik.com";
@@ -75,6 +75,7 @@
         const IconLock = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
         const IconSun = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
         const IconDownload = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+        const IconUpload = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
 
         const TR_MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
         const TR_MONTHS_SHORT = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -236,6 +237,9 @@
             const [newEmp, setNewEmp] = useState({ name: '', role: '' });
             const [editingEmployee, setEditingEmployee] = useState(null);
 
+            const fileInputRef = useRef(null);
+            const [pendingRestoreData, setPendingRestoreData] = useState(null);
+
             const sessionId = useMemo(() => {
                 try {
                     let sid = sessionStorage.getItem('cinarcik_sid');
@@ -328,6 +332,48 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
+            };
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data && data.employees) {
+                            setPendingRestoreData(data);
+                        } else {
+                            setDbErrorMsg("Seçtiğiniz dosya geçerli bir Çınarcık Yedek dosyası değil.");
+                        }
+                    } catch (error) {
+                        setDbErrorMsg("Dosya okunamadı: " + error.message);
+                    }
+                    e.target.value = ''; 
+                };
+                reader.readAsText(file);
+            };
+
+            const confirmRestore = async () => {
+                if (!pendingRestoreData) return;
+                setLoading(true);
+                try {
+                    const db = window.firebase.firestore();
+                    await db.collection("restoran").doc("cinarcik_merkez").set({
+                        employees: pendingRestoreData.employees || [],
+                        shifts: pendingRestoreData.shifts || {},
+                        rates: pendingRestoreData.rates || {},
+                        advances: pendingRestoreData.advances || {},
+                        lastUpdated: new Date().toISOString(),
+                        lastAction: "Eski Yedek Geri Yüklendi"
+                    });
+                    setPendingRestoreData(null);
+                } catch (error) {
+                    setDbErrorMsg("Geri yükleme başarısız: " + error.message);
+                } finally {
+                    setLoading(false);
+                }
             };
 
             useEffect(() => { 
@@ -566,9 +612,9 @@
                 <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-6">
                     <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-md border border-red-200 text-center">
                         <div className="text-red-500 flex justify-center mb-4"><IconAlert /></div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">Bağlantı Hatası</h3>
+                        <h3 className="text-lg font-bold text-slate-800 mb-2">Sistem Mesajı</h3>
                         <p className="text-sm text-slate-600 mb-6">{dbErrorMsg}</p>
-                        <button onClick={handleLogout} className="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold">Giriş Ekranına Dön</button>
+                        <button onClick={() => {setDbErrorMsg(""); handleLogout();}} className="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold">Tamam</button>
                     </div>
                 </div>
             );
@@ -599,7 +645,11 @@
                                 </div>
                                 <div className="flex gap-1">
                                     {isAdmin && (
-                                        <button onClick={downloadBackup} className="p-2 text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors border border-purple-100 mr-1 shadow-sm" title="Sistem Yedeğini İndir (Sadece Admin)"><IconDownload /></button>
+                                        <>
+                                            <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+                                            <button onClick={() => fileInputRef.current.click()} className="p-2 text-rose-600 bg-rose-50 rounded-lg hover:bg-rose-100 transition-colors border border-rose-100 shadow-sm" title="Yedeği Geri Yükle"><IconUpload /></button>
+                                            <button onClick={downloadBackup} className="p-2 text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors border border-purple-100 shadow-sm mr-1" title="Sistemi Yedekle"><IconDownload /></button>
+                                        </>
                                     )}
                                     <button onClick={() => setModals({...modals, salary: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Maaş"><IconWallet /></button>
                                     <button onClick={() => setModals({...modals, report: true})} className="p-2 text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors" title="Rapor"><IconChart /></button>
@@ -653,6 +703,23 @@
                         <div className="flex items-center gap-1.5 shrink-0 px-2 border-l border-slate-200" title="Aktif Yönetici Sayısı"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span className="font-bold text-slate-600">{onlineUsers} Çevrimiçi</span></div>
                         <button onClick={handleLogout} className="shrink-0 text-slate-400 hover:text-red-500 underline ml-auto">Güvenli Çıkış</button>
                     </div>
+
+                    <Modal isOpen={!!pendingRestoreData} onClose={() => setPendingRestoreData(null)} title="Dikkat: Geri Yükleme İşlemi">
+                        <div className="space-y-4">
+                            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex gap-3">
+                                <div className="text-rose-500 shrink-0"><IconAlert /></div>
+                                <p className="text-sm text-rose-800 font-medium leading-relaxed">
+                                    Seçtiğiniz yedek dosyası başarıyla okundu. <strong>Şu anki boş veritabanınız silinecek ve yerine bu dosyadaki tüm veriler (Personeller, Vardiyalar, Maaşlar) yazılacaktır.</strong> Bu işlem geri alınamaz. Onaylıyor musunuz?
+                                </p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button onClick={() => setPendingRestoreData(null)} className="flex-1 py-3 bg-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-300 transition-colors text-sm">İptal</button>
+                                <button onClick={confirmRestore} disabled={loading} className="flex-[2] py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200 text-sm flex justify-center items-center">
+                                    {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Evet, Geri Yükle"}
+                                </button>
+                            </div>
+                        </div>
+                    </Modal>
 
                     <Modal isOpen={!!reminderData} onClose={() => setReminderData(null)} title="Ay Sonu Hatırlatıcısı">
                         <div className="space-y-4">
