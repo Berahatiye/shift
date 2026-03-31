@@ -197,7 +197,7 @@
                 <span className="text-slate-500 pl-3"><IconCalendar /></span>
                 <select value={value} onChange={e => onChange(e.target.value)} className="w-full pl-2 pr-8 py-2 bg-transparent text-sm font-bold text-slate-700 outline-none appearance-none cursor-pointer">
                     {Array.from({length: 21}).map((_, i) => {
-                        // FIX: Şubat atlama hatasını (31. gün problemi) çözmek için günü 1'e sabitliyoruz
+                        // Şubat atlama hatasını (31. gün problemi) çözmek için günü 1'e sabitliyoruz
                         const d = new Date();
                         d.setDate(1);
                         d.setMonth(d.getMonth() - i + 6); // 6 ay ileri, 14 ay geri
@@ -241,6 +241,7 @@
 
             const fileInputRef = useRef(null);
             const syncChannelRef = useRef(null);
+            const presenceChannelRef = useRef(null);
             const [pendingRestoreData, setPendingRestoreData] = useState(null);
 
             const sessionId = useMemo(() => {
@@ -387,41 +388,49 @@
                 setDataLoaded(true);
             };
 
-            // Supabase Veri Dinleme (ANINDA SENKRONİZASYON MOTORU)
+            // Supabase Veri Dinleme (MİLİSANİYELİK ANINDA SENKRONİZASYON MOTORU)
             useEffect(() => { 
                 if (!isAuthenticated) return;
 
                 fetchDbData();
 
-                const channel = supabase.channel('cinarcik_sync_channel');
-                syncChannelRef.current = channel;
+                // 1. Veritabanındaki değişikliği saniyesinde yakala (Milisaniyelik hız)
+                const dataChannel = supabase.channel('db_changes');
+                dataChannel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cinarcik_db', filter: 'id=eq.1' }, (payload) => {
+                    if (payload.new && payload.new.data) {
+                        const d = payload.new.data;
+                        setEmployees(d.employees || []); 
+                        setShifts(d.shifts || {}); 
+                        setRates(d.rates || {}); 
+                        setAdvances(d.advances || {});
+                        setLastUpdated(d.lastUpdated || null); 
+                        setLastAction(d.lastAction || "");
+                    } else {
+                        fetchDbData();
+                    }
+                }).subscribe();
+                syncChannelRef.current = dataChannel;
 
-                // 1. Telsiz/Radyo Yayını (Firebase seviyesinde anında güncelleme)
-                channel.on('broadcast', { event: 'data_changed' }, (payload) => {
-                    fetchDbData(); // Başka bir cihazdan sinyal geldiğinde veritabanından en güncel halini çek
-                });
+                // 2. Çevrimiçi Takibi (Presence)
+                const pChannel = supabase.channel('online_presence');
+                presenceChannelRef.current = pChannel;
 
-                // 2. Veritabanı Değişikliği (Yedek Güvenlik Ağı)
-                channel.on('postgres_changes', { event: '*', schema: 'public', table: 'cinarcik_db' }, (payload) => {
-                    fetchDbData(); 
-                });
-
-                // Supabase Yerleşik Presence (Çevrimiçi Takibi)
-                channel.on('presence', { event: 'sync' }, () => {
-                    const newState = channel.presenceState();
+                pChannel.on('presence', { event: 'sync' }, () => {
+                    const newState = pChannel.presenceState();
                     let count = 0;
                     for (let id in newState) count += newState[id].length;
                     setOnlineUsers(Math.max(1, count));
                 });
 
-                channel.subscribe(async (status) => {
+                pChannel.subscribe(async (status) => {
                     if (status === 'SUBSCRIBED') {
-                        await channel.track({ user: sessionId, online_at: new Date().toISOString() });
+                        await pChannel.track({ user: sessionId, online_at: new Date().toISOString() });
                     }
                 });
 
                 return () => { 
-                    supabase.removeChannel(channel); 
+                    supabase.removeChannel(dataChannel); 
+                    supabase.removeChannel(pChannel);
                 };
             }, [isAuthenticated, sessionId]);
 
@@ -455,24 +464,13 @@
                 }
             }, [dataLoaded, isAuthenticated, employees, shifts]);
 
-            // Supabase'e Veri Gönderme ve Anında Sinyal Çakma Fonksiyonu
+            // Supabase'e Veri Gönderme Fonksiyonu
             const saveToCloud = async (newDataState) => {
                 try {
                     const payload = { ...newDataState, lastUpdated: new Date().toISOString() };
                     const { error } = await supabase.from('cinarcik_db').update({ data: payload }).eq('id', 1);
-                    if (error) {
-                        console.error("Bulut kayıt hatası:", error);
-                        return;
-                    }
-                    
-                    // İşlem başarılıysa diğer açık olan ekranlara (telefon/tablet) anında radyo sinyali gönder
-                    if (syncChannelRef.current) {
-                        syncChannelRef.current.send({
-                            type: 'broadcast',
-                            event: 'data_changed',
-                            payload: { t: Date.now() }
-                        }).catch(() => {});
-                    }
+                    if (error) console.error("Bulut kayıt hatası:", error);
+                    // Not: Güncelleme başarılı olduğunda postgres_changes tetiklenir ve diğer cihazlara anında yansır.
                 } catch (err) {}
             };
 
