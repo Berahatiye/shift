@@ -197,7 +197,6 @@
                 <span className="text-slate-500 pl-3"><IconCalendar /></span>
                 <select value={value} onChange={e => onChange(e.target.value)} className="w-full pl-2 pr-8 py-2 bg-transparent text-sm font-bold text-slate-700 outline-none appearance-none cursor-pointer">
                     {Array.from({length: 21}).map((_, i) => {
-                        // Şubat atlama hatasını (31. gün problemi) çözmek için günü 1'e sabitliyoruz
                         const d = new Date();
                         d.setDate(1);
                         d.setMonth(d.getMonth() - i + 6); // 6 ay ileri, 14 ay geri
@@ -225,11 +224,11 @@
             const [shifts, setShifts] = useState({});
             const [rates, setRates] = useState({});
             const [advances, setAdvances] = useState({});
+            const [bonuses, setBonuses] = useState({}); // YENİ: Prim verisi
             const [lastUpdated, setLastUpdated] = useState(null);
             const [lastAction, setLastAction] = useState("");
             const [dataLoaded, setDataLoaded] = useState(false);
             const [reminderData, setReminderData] = useState(null);
-            const [onlineUsers, setOnlineUsers] = useState(1);
             
             const [modals, setModals] = useState({ shift: false, team: false, report: false, salary: false });
             const [activeCell, setActiveCell] = useState(null); 
@@ -241,7 +240,6 @@
 
             const fileInputRef = useRef(null);
             const syncChannelRef = useRef(null);
-            const presenceChannelRef = useRef(null);
             const [pendingRestoreData, setPendingRestoreData] = useState(null);
 
             const sessionId = useMemo(() => {
@@ -316,7 +314,7 @@
             const downloadBackup = () => {
                 const backupData = {
                     timestamp: new Date().toISOString(),
-                    employees, shifts, rates, advances
+                    employees, shifts, rates, advances, bonuses // Bonuses eklendi
                 };
                 const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
@@ -359,6 +357,7 @@
                         shifts: pendingRestoreData.shifts || {},
                         rates: pendingRestoreData.rates || {},
                         advances: pendingRestoreData.advances || {},
+                        bonuses: pendingRestoreData.bonuses || {}, // Bonuses eklendi
                         lastAction: "Eski JSON Yedeği Geri Yüklendi"
                     };
                     await saveToCloud(payload);
@@ -382,19 +381,19 @@
                     setShifts(d.shifts || {}); 
                     setRates(d.rates || {}); 
                     setAdvances(d.advances || {});
+                    setBonuses(d.bonuses || {}); // Bonuses eklendi
                     setLastUpdated(d.lastUpdated || null); 
                     setLastAction(d.lastAction || ""); 
                 }
                 setDataLoaded(true);
             };
 
-            // Supabase Veri Dinleme (MİLİSANİYELİK ANINDA SENKRONİZASYON MOTORU)
+            // Supabase Veri Dinleme (MİLİSANİYELİK ANINDA SENKRONİZASYON MOTORU - Presence Kaldırıldı)
             useEffect(() => { 
                 if (!isAuthenticated) return;
 
                 fetchDbData();
 
-                // 1. Veritabanındaki değişikliği saniyesinde yakala (Milisaniyelik hız)
                 const dataChannel = supabase.channel('db_changes');
                 dataChannel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cinarcik_db', filter: 'id=eq.1' }, (payload) => {
                     if (payload.new && payload.new.data) {
@@ -403,6 +402,7 @@
                         setShifts(d.shifts || {}); 
                         setRates(d.rates || {}); 
                         setAdvances(d.advances || {});
+                        setBonuses(d.bonuses || {});
                         setLastUpdated(d.lastUpdated || null); 
                         setLastAction(d.lastAction || "");
                     } else {
@@ -411,28 +411,10 @@
                 }).subscribe();
                 syncChannelRef.current = dataChannel;
 
-                // 2. Çevrimiçi Takibi (Presence)
-                const pChannel = supabase.channel('online_presence');
-                presenceChannelRef.current = pChannel;
-
-                pChannel.on('presence', { event: 'sync' }, () => {
-                    const newState = pChannel.presenceState();
-                    let count = 0;
-                    for (let id in newState) count += newState[id].length;
-                    setOnlineUsers(Math.max(1, count));
-                });
-
-                pChannel.subscribe(async (status) => {
-                    if (status === 'SUBSCRIBED') {
-                        await pChannel.track({ user: sessionId, online_at: new Date().toISOString() });
-                    }
-                });
-
                 return () => { 
                     supabase.removeChannel(dataChannel); 
-                    supabase.removeChannel(pChannel);
                 };
-            }, [isAuthenticated, sessionId]);
+            }, [isAuthenticated]);
 
             // Ay Sonu Hatırlatıcı
             useEffect(() => {
@@ -470,7 +452,6 @@
                     const payload = { ...newDataState, lastUpdated: new Date().toISOString() };
                     const { error } = await supabase.from('cinarcik_db').update({ data: payload }).eq('id', 1);
                     if (error) console.error("Bulut kayıt hatası:", error);
-                    // Not: Güncelleme başarılı olduğunda postgres_changes tetiklenir ve diğer cihazlara anında yansır.
                 } catch (err) {}
             };
 
@@ -493,14 +474,23 @@
                         const s = shifts[`${emp.id}_${ds}`];
                         if (s) { if (s.isAnnualLeave) totalAnnualLeave++; else if (s.isOff) totalOff++; else { totalHours += calculateHours(s.start, s.end); totalShifts++; } }
                     }
-                    const rK = `${emp.id}_${reportMonth}`, rate = rates[rK] || 0, advance = advances[rK] || 0;
-                    return { ...emp, totalHours, totalShifts, totalOff, totalAnnualLeave, rate, grossSalary: totalHours * rate, advance, netSalary: (totalHours * rate) - advance };
-                }).filter(emp => emp.isActive !== false || emp.totalHours > 0 || emp.advance > 0 || emp.totalAnnualLeave > 0 || emp.totalOff > 0);
-            }, [reportMonth, shifts, employees, rates, advances]);
+                    const rK = `${emp.id}_${reportMonth}`;
+                    const rate = rates[rK] || 0;
+                    const advance = advances[rK] || 0;
+                    const bonus = bonuses[rK] || 0; // Prim verisi çekildi
+                    
+                    // Maaş = (Saat x Ücret) + Prim - Avans
+                    const grossSalary = totalHours * rate;
+                    const netSalary = grossSalary + bonus - advance;
+
+                    return { ...emp, totalHours, totalShifts, totalOff, totalAnnualLeave, rate, grossSalary, advance, bonus, netSalary };
+                }).filter(emp => emp.isActive !== false || emp.totalHours > 0 || emp.advance > 0 || emp.bonus > 0 || emp.totalAnnualLeave > 0 || emp.totalOff > 0);
+            }, [reportMonth, shifts, employees, rates, advances, bonuses]);
 
             const totalSalaryPayout = reportData.reduce((a, c) => a + c.netSalary, 0);
             const totalGross = reportData.reduce((a, c) => a + c.grossSalary, 0);
             const totalAdvance = reportData.reduce((a, c) => a + c.advance, 0);
+            const totalBonus = reportData.reduce((a, c) => a + c.bonus, 0); // Toplam prim
 
             const handleCellClick = (empId, date) => { 
                 const s = getShift(empId, date); 
@@ -517,7 +507,7 @@
                 
                 const nextShifts = { ...shifts, [k]: d };
                 setShifts(nextShifts); setModals(p => ({ ...p, shift: false }));
-                saveToCloud({ employees, shifts: nextShifts, rates, advances, lastAction: `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: ${d.isAnnualLeave ? 'Yıllık İzin eklendi' : d.isOff ? 'İzin (OFF) eklendi' : 'Vardiya güncellendi'}` });
+                saveToCloud({ employees, shifts: nextShifts, rates, advances, bonuses, lastAction: `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: ${d.isAnnualLeave ? 'Yıllık İzin eklendi' : d.isOff ? 'İzin (OFF) eklendi' : 'Vardiya güncellendi'}` });
             };
 
             const deleteShift = () => {
@@ -525,7 +515,7 @@
                 const k = `${activeCell.empId}_${activeCell.date}`;
                 const nextShifts = { ...shifts }; delete nextShifts[k];
                 setShifts(nextShifts); setModals(p => ({ ...p, shift: false }));
-                saveToCloud({ employees, shifts: nextShifts, rates, advances, lastAction: `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: Vardiya silindi` });
+                saveToCloud({ employees, shifts: nextShifts, rates, advances, bonuses, lastAction: `${employees.find(e => e.id === activeCell.empId)?.name || 'Personel'}: Vardiya silindi` });
             };
 
             const addEmployee = () => { 
@@ -533,7 +523,7 @@
                     const ne = { id: generateId(), name: newEmp.name, role: newEmp.role || 'Personel', isActive: true, joinDate: null, leaveDate: null }; 
                     const nextEmp = [...employees.filter(e => e.id !== 'example'), ne];
                     setEmployees(nextEmp); 
-                    saveToCloud({ employees: nextEmp, shifts, rates, advances, lastAction: `Yeni personel eklendi: ${ne.name}` }); 
+                    saveToCloud({ employees: nextEmp, shifts, rates, advances, bonuses, lastAction: `Yeni personel eklendi: ${ne.name}` }); 
                     setNewEmp({ name: '', role: '' }); 
                 } 
             };
@@ -542,7 +532,7 @@
                 if (editingEmployee?.name) { 
                     const nextEmp = employees.map(e => e.id === editingEmployee.id ? editingEmployee : e);
                     setEmployees(nextEmp); 
-                    saveToCloud({ employees: nextEmp, shifts, rates, advances, lastAction: `Personel güncellendi: ${editingEmployee.name}` }); 
+                    saveToCloud({ employees: nextEmp, shifts, rates, advances, bonuses, lastAction: `Personel güncellendi: ${editingEmployee.name}` }); 
                     setEditingEmployee(null); 
                     setDeleteConfirm(false);
                 } 
@@ -552,7 +542,7 @@
                 const n = employees.find(e => e.id === id)?.name || 'Personel'; 
                 const nextEmp = employees.filter(e => e.id !== id);
                 setEmployees(nextEmp); 
-                saveToCloud({ employees: nextEmp, shifts, rates, advances, lastAction: `Personel silindi: ${n}` }); 
+                saveToCloud({ employees: nextEmp, shifts, rates, advances, bonuses, lastAction: `Personel silindi: ${n}` }); 
                 setEditingEmployee(null); 
                 setDeleteConfirm(false);
             };
@@ -561,14 +551,21 @@
                 const k = `${empId}_${reportMonth}`; 
                 const nextRates = { ...rates, [k]: parseFloat(val) || 0 };
                 setRates(nextRates); 
-                saveToCloud({ employees, shifts, rates: nextRates, advances, lastAction: `${employees.find(e => e.id === empId)?.name || 'Personel'}: Ücret güncellendi` }); 
+                saveToCloud({ employees, shifts, rates: nextRates, advances, bonuses, lastAction: `${employees.find(e => e.id === empId)?.name || 'Personel'}: Ücret güncellendi` }); 
             };
             
             const updateAdvance = (empId, val) => { 
                 const k = `${empId}_${reportMonth}`; 
                 const nextAdvances = { ...advances, [k]: parseFloat(val) || 0 };
                 setAdvances(nextAdvances); 
-                saveToCloud({ employees, shifts, rates, advances: nextAdvances, lastAction: `${employees.find(e => e.id === empId)?.name || 'Personel'}: Avans güncellendi` }); 
+                saveToCloud({ employees, shifts, rates, advances: nextAdvances, bonuses, lastAction: `${employees.find(e => e.id === empId)?.name || 'Personel'}: Avans güncellendi` }); 
+            };
+
+            const updateBonus = (empId, val) => { 
+                const k = `${empId}_${reportMonth}`; 
+                const nextBonuses = { ...bonuses, [k]: parseFloat(val) || 0 };
+                setBonuses(nextBonuses); 
+                saveToCloud({ employees, shifts, rates, advances, bonuses: nextBonuses, lastAction: `${employees.find(e => e.id === empId)?.name || 'Personel'}: Prim güncellendi` }); 
             };
 
             const performExport = async (elementId, filename) => {
@@ -730,7 +727,6 @@
                                 {lastUpdated ? <><span className="hidden sm:inline">Son İşlem: </span><span className="font-bold sm:font-normal">{formatLastUpdated(lastUpdated).split(' ')[3]}</span>{lastAction && <span className="text-slate-400 font-normal ml-1">- {lastAction}</span>}</> : "Bekleniyor..."}
                             </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0 px-2 border-l border-slate-200" title="Aktif Yönetici Sayısı"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span className="font-bold text-slate-600">{onlineUsers} Çevrimiçi</span></div>
                         <button onClick={handleLogout} className="shrink-0 text-slate-400 hover:text-red-500 underline ml-auto">Güvenli Çıkış</button>
                     </div>
 
@@ -872,12 +868,12 @@
                         </div>
                     </Modal>
 
-                    <Modal isOpen={modals.salary} onClose={() => setModals({...modals, salary: false})} title="Maaş Hesaplama" maxWidth="max-w-2xl">
+                    <Modal isOpen={modals.salary} onClose={() => setModals({...modals, salary: false})} title="Maaş Hesaplama" maxWidth="max-w-4xl">
                         <div id="salary-container" className="space-y-4">
                             <div className="flex flex-col xs:flex-row gap-3 justify-between items-start xs:items-center bg-slate-50 p-3 rounded-xl"><MonthSelector value={reportMonth} onChange={setReportMonth} /><button onClick={() => performExport('salary-container', `Maas_${reportMonth}.png`)} className="text-xs font-bold bg-slate-800 text-white px-3 py-2 rounded-lg hover:bg-slate-700 w-full xs:w-auto">İndir</button></div>
                             <div className="overflow-x-auto pb-2">
                                 <table className="w-full text-sm text-left whitespace-nowrap">
-                                    <thead className="text-xs text-slate-500 uppercase bg-slate-100"><tr><th className="px-3 py-2 rounded-l-lg">Personel</th><th className="px-3 py-2 text-center">Saat</th><th className="px-3 py-2 text-center">Y. İzin</th><th className="px-3 py-2 text-center">Ücret/S</th><th className="px-3 py-2 text-right">Hakediş</th><th className="px-3 py-2 text-center">Avans</th><th className="px-3 py-2 rounded-r-lg text-right">Kalan</th></tr></thead>
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-100"><tr><th className="px-3 py-2 rounded-l-lg">Personel</th><th className="px-3 py-2 text-center">Saat</th><th className="px-3 py-2 text-center">Y. İzin</th><th className="px-3 py-2 text-center">Ücret/S</th><th className="px-3 py-2 text-right">Hakediş</th><th className="px-3 py-2 text-center">Prim</th><th className="px-3 py-2 text-center">Avans</th><th className="px-3 py-2 rounded-r-lg text-right">Kalan</th></tr></thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {reportData.map(d => (
                                             <tr key={d.id} className={d.isActive === false ? "opacity-60 bg-slate-50" : ""}>
@@ -885,12 +881,13 @@
                                                 <td className="px-3 py-2 text-center text-slate-600">{d.totalHours}</td><td className="px-3 py-2 text-center text-amber-600 font-bold">{d.totalAnnualLeave}</td>
                                                 <td className="px-3 py-2 text-center"><input type="number" value={rates[`${d.id}_${reportMonth}`]||''} onChange={(e) => updateRate(d.id, e.target.value)} placeholder="0" className="w-16 p-1 text-center border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent font-bold"/></td>
                                                 <td className="px-3 py-2 text-right text-slate-500 font-medium">{formatMoney(d.grossSalary)}</td>
+                                                <td className="px-3 py-2 text-center"><input type="number" value={bonuses[`${d.id}_${reportMonth}`] || ''} onChange={(e) => updateBonus(d.id, e.target.value)} placeholder="0" className="w-16 p-1 text-center border-b border-emerald-300 text-emerald-600 focus:border-emerald-500 outline-none bg-transparent font-bold"/></td>
                                                 <td className="px-3 py-2 text-center"><input type="number" value={advances[`${d.id}_${reportMonth}`] || ''} onChange={(e) => updateAdvance(d.id, e.target.value)} placeholder="0" className="w-16 p-1 text-center border-b border-red-300 text-red-600 focus:border-red-500 outline-none bg-transparent font-bold"/></td>
                                                 <td className="px-3 py-2 text-right font-bold text-green-600">{formatMoney(d.netSalary)}</td>
                                             </tr>
                                         ))}
                                         <tr className="bg-slate-50 font-bold text-slate-700">
-                                            <td colSpan="4" className="px-3 py-2 text-right">TOPLAM:</td><td className="px-3 py-2 text-right text-slate-600">{formatMoney(totalGross)}</td><td className="px-3 py-2 text-center text-red-500">{formatMoney(totalAdvance)}</td><td className="px-3 py-2 text-right text-green-700 font-black">{formatMoney(totalSalaryPayout)}</td>
+                                            <td colSpan="4" className="px-3 py-2 text-right">TOPLAM:</td><td className="px-3 py-2 text-right text-slate-600">{formatMoney(totalGross)}</td><td className="px-3 py-2 text-center text-emerald-600">{formatMoney(totalBonus)}</td><td className="px-3 py-2 text-center text-red-500">{formatMoney(totalAdvance)}</td><td className="px-3 py-2 text-right text-green-700 font-black">{formatMoney(totalSalaryPayout)}</td>
                                         </tr>
                                     </tbody>
                                 </table>
