@@ -22,6 +22,7 @@
         input[type="time"]::-webkit-calendar-picker-indicator { background: transparent; bottom: 0; color: transparent; cursor: pointer; height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto; }
     </style>
     
+    <!-- Supabase ve React Kütüphaneleri -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -195,8 +196,11 @@
             <div className="relative bg-white rounded-lg flex items-center border border-slate-200 w-full xs:w-auto h-10">
                 <span className="text-slate-500 pl-3"><IconCalendar /></span>
                 <select value={value} onChange={e => onChange(e.target.value)} className="w-full pl-2 pr-8 py-2 bg-transparent text-sm font-bold text-slate-700 outline-none appearance-none cursor-pointer">
-                    {Array.from({length: 12}).map((_, i) => {
-                        const d = new Date(); d.setMonth(d.getMonth() - i);
+                    {Array.from({length: 21}).map((_, i) => {
+                        // FIX: Şubat atlama hatasını (31. gün problemi) çözmek için günü 1'e sabitliyoruz
+                        const d = new Date();
+                        d.setDate(1);
+                        d.setMonth(d.getMonth() - i + 6); // 6 ay ileri, 14 ay geri
                         const v = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
                         return <option key={v} value={v}>{formatMonthTR(v)}</option>;
                     })}
@@ -236,6 +240,7 @@
             const [deleteConfirm, setDeleteConfirm] = useState(false);
 
             const fileInputRef = useRef(null);
+            const syncChannelRef = useRef(null);
             const [pendingRestoreData, setPendingRestoreData] = useState(null);
 
             const sessionId = useMemo(() => {
@@ -364,52 +369,59 @@
                 }
             };
 
-            // Supabase Veri Dinleme ve Realtime
+            const fetchDbData = async () => {
+                const { data, error } = await supabase.from('cinarcik_db').select('data').eq('id', 1).single();
+                if (error) { 
+                    setDbErrorMsg("Veritabanına ulaşılamadı. SQL kodunu kurduğunuzdan emin olun."); 
+                    return; 
+                }
+                if (data && data.data) {
+                    const d = data.data;
+                    setEmployees(d.employees || []); 
+                    setShifts(d.shifts || {}); 
+                    setRates(d.rates || {}); 
+                    setAdvances(d.advances || {});
+                    setLastUpdated(d.lastUpdated || null); 
+                    setLastAction(d.lastAction || ""); 
+                }
+                setDataLoaded(true);
+            };
+
+            // Supabase Veri Dinleme (ANINDA SENKRONİZASYON MOTORU)
             useEffect(() => { 
                 if (!isAuthenticated) return;
 
-                const fetchInitialData = async () => {
-                    const { data, error } = await supabase.from('cinarcik_db').select('data').eq('id', 1).single();
-                    if (error) { 
-                        setDbErrorMsg("SQL kodunu Supabase üzerinde çalıştırdığınızdan emin olun."); 
-                        return; 
-                    }
-                    if (data && data.data) {
-                        const d = data.data;
-                        setEmployees(d.employees || []); setShifts(d.shifts || {}); setRates(d.rates || {}); setAdvances(d.advances || {});
-                        setLastUpdated(d.lastUpdated || null); setLastAction(d.lastAction || ""); 
-                    }
-                    setDataLoaded(true);
-                };
+                fetchDbData();
 
-                fetchInitialData();
+                const channel = supabase.channel('cinarcik_sync_channel');
+                syncChannelRef.current = channel;
 
-                // Gerçek Zamanlı Değişiklikler
-                const channel = supabase.channel('realtime_db')
-                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cinarcik_db', filter: 'id=eq.1' }, (payload) => {
-                        if (payload.new && payload.new.data) {
-                            const d = payload.new.data;
-                            setEmployees(d.employees || []); setShifts(d.shifts || {}); setRates(d.rates || {}); setAdvances(d.advances || {});
-                            setLastUpdated(d.lastUpdated || null); setLastAction(d.lastAction || "");
-                        }
-                    }).subscribe();
+                // 1. Telsiz/Radyo Yayını (Firebase seviyesinde anında güncelleme)
+                channel.on('broadcast', { event: 'data_changed' }, (payload) => {
+                    fetchDbData(); // Başka bir cihazdan sinyal geldiğinde veritabanından en güncel halini çek
+                });
+
+                // 2. Veritabanı Değişikliği (Yedek Güvenlik Ağı)
+                channel.on('postgres_changes', { event: '*', schema: 'public', table: 'cinarcik_db' }, (payload) => {
+                    fetchDbData(); 
+                });
 
                 // Supabase Yerleşik Presence (Çevrimiçi Takibi)
-                const presenceChannel = supabase.channel('online_users');
-                presenceChannel.on('presence', { event: 'sync' }, () => {
-                    const newState = presenceChannel.presenceState();
+                channel.on('presence', { event: 'sync' }, () => {
+                    const newState = channel.presenceState();
                     let count = 0;
                     for (let id in newState) count += newState[id].length;
                     setOnlineUsers(Math.max(1, count));
-                }).subscribe(async (status) => {
+                });
+
+                channel.subscribe(async (status) => {
                     if (status === 'SUBSCRIBED') {
-                        await presenceChannel.track({ user: sessionId, online_at: new Date().toISOString() });
+                        await channel.track({ user: sessionId, online_at: new Date().toISOString() });
                     }
                 });
 
                 return () => { 
                     supabase.removeChannel(channel); 
-                    supabase.removeChannel(presenceChannel); 
                 };
             }, [isAuthenticated, sessionId]);
 
@@ -443,12 +455,24 @@
                 }
             }, [dataLoaded, isAuthenticated, employees, shifts]);
 
-            // Supabase'e Veri Gönderme Fonksiyonu
+            // Supabase'e Veri Gönderme ve Anında Sinyal Çakma Fonksiyonu
             const saveToCloud = async (newDataState) => {
                 try {
                     const payload = { ...newDataState, lastUpdated: new Date().toISOString() };
                     const { error } = await supabase.from('cinarcik_db').update({ data: payload }).eq('id', 1);
-                    if (error) console.error("Bulut kayıt hatası:", error);
+                    if (error) {
+                        console.error("Bulut kayıt hatası:", error);
+                        return;
+                    }
+                    
+                    // İşlem başarılıysa diğer açık olan ekranlara (telefon/tablet) anında radyo sinyali gönder
+                    if (syncChannelRef.current) {
+                        syncChannelRef.current.send({
+                            type: 'broadcast',
+                            event: 'data_changed',
+                            payload: { t: Date.now() }
+                        }).catch(() => {});
+                    }
                 } catch (err) {}
             };
 
