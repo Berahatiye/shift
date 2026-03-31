@@ -20,7 +20,7 @@
         @keyframes fade-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
         .animate-fade-in { animation: fade-in 0.2s ease-out; }
         input[type="time"]::-webkit-calendar-picker-indicator { background: transparent; bottom: 0; color: transparent; cursor: pointer; height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto; }
-        /* Sayı inputlarındaki okları gizleme (daha temiz görünüm) */
+        /* Sayı inputlarındaki okları gizleme */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
@@ -229,7 +229,7 @@
             const [shifts, setShifts] = useState({});
             const [rates, setRates] = useState({});
             const [advances, setAdvances] = useState({});
-            const [bonuses, setBonuses] = useState({}); // YENİ: Prim verisi
+            const [bonuses, setBonuses] = useState({}); 
             const [lastUpdated, setLastUpdated] = useState(null);
             const [lastAction, setLastAction] = useState("");
             const [dataLoaded, setDataLoaded] = useState(false);
@@ -251,7 +251,6 @@
             const inputDebounceRef = useRef(null);
             const latestDataRef = useRef({ employees: [], shifts: {}, rates: {}, advances: {}, bonuses: {} });
 
-            // State her değiştiğinde reference kopyasını da güncelle
             useEffect(() => {
                 latestDataRef.current = { employees, shifts, rates, advances, bonuses };
             }, [employees, shifts, rates, advances, bonuses]);
@@ -498,12 +497,10 @@
                     }
                     const rK = `${emp.id}_${reportMonth}`;
                     
-                    // Hesaplamalar esnasında sayısal (float) hale çeviriyoruz. 
                     const rate = parseFloat(rates[rK]) || 0;
                     const advance = parseFloat(advances[rK]) || 0;
                     const bonus = parseFloat(bonuses[rK]) || 0; 
                     
-                    // Maaş = (Saat x Ücret) + Prim - Avans
                     const grossSalary = totalHours * rate;
                     const netSalary = grossSalary + bonus - advance;
 
@@ -571,12 +568,11 @@
                 setDeleteConfirm(false);
             };
 
-            // Yazarken Titremeyi Önleyen Gecikmeli Güncellemeler (Debounced)
             const updateRate = (empId, val) => { 
                 const k = `${empId}_${reportMonth}`; 
                 const nextRates = { ...rates, [k]: val };
                 setRates(nextRates); 
-                latestDataRef.current.rates = nextRates; // Anlık Ref kopyasını hemen güncelle
+                latestDataRef.current.rates = nextRates; 
                 triggerDebouncedSave('Ücret güncellendi'); 
             };
             
@@ -596,19 +592,49 @@
                 triggerDebouncedSave('Prim güncellendi'); 
             };
 
+            // DEV BOYUTLU VE YÜKSEK ÇÖZÜNÜRLÜKLÜ ÇIKTI FONKSİYONU
             const performExport = async (elementId, filename) => {
                 setLoading(true); await new Promise(r => setTimeout(r, 200));
                 const element = document.getElementById(elementId); if(!element) return setLoading(false);
-                const c = document.createElement('div'); Object.assign(c.style, { position: 'absolute', top: '-9999px', left: '0', width: '1400px', background: '#ffffff', padding: '40px', fontFamily: 'sans-serif', zIndex: '9999', boxSizing: 'border-box' });
-                c.innerHTML = `<div style="display: flex; align-items: center; gap: 25px; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 25px;"><img src="${LOGO_URL}" style="width: 80px; height: 80px; border-radius: 15px; object-fit: cover;" crossorigin="anonymous" /><div><h1 style="font-size: 36px; font-weight: 800; margin: 0; color: #1e293b;">Çınarcık</h1><p style="font-size: 16px; color: #64748b; margin: 8px 0 0 0; font-weight: 500;">Dönem: <strong style="color: #0f172a;">${elementId==='schedule-table-container' ? formatDateTR(weekStart) : formatMonthTR(reportMonth)}</strong></p></div></div>`;
+                
+                // Arkaplan Tuvalini Büyüttük (1800px genişlik)
+                const c = document.createElement('div'); Object.assign(c.style, { position: 'absolute', top: '-9999px', left: '0', width: '1800px', background: '#ffffff', padding: '60px', fontFamily: 'sans-serif', zIndex: '9999', boxSizing: 'border-box' });
+                
+                // Başlık fontları devasa yapıldı (H1: 48px, Açıklama: 24px)
+                c.innerHTML = `<div style="display: flex; align-items: center; gap: 30px; margin-bottom: 40px; border-bottom: 3px solid #e2e8f0; padding-bottom: 30px;"><img src="${LOGO_URL}" style="width: 100px; height: 100px; border-radius: 20px; object-fit: cover;" crossorigin="anonymous" /><div><h1 style="font-size: 48px; font-weight: 800; margin: 0; color: #1e293b;">Çınarcık</h1><p style="font-size: 24px; color: #64748b; margin: 12px 0 0 0; font-weight: 500;">Dönem: <strong style="color: #0f172a;">${elementId==='schedule-table-container' ? formatDateTR(weekStart) : formatMonthTR(reportMonth)}</strong></p></div></div>`;
+                
                 const t = element.querySelector('table').cloneNode(true); t.style.width = '100%'; t.style.borderCollapse = 'collapse';
-                t.querySelectorAll('input').forEach(i => { const s = document.createElement('span'); s.innerText = i.value ? i.value + (elementId==='salary-container' && i.className.includes('w-20') && !i.value.includes('.') ? '.00' : '') : '0.00'; s.style.fontWeight = 'bold'; s.style.fontSize = '14px'; i.parentNode.replaceChild(s, i); });
-                t.querySelectorAll('*').forEach(el => { el.style.position = 'static'; el.style.overflow = 'visible'; el.style.transform = 'none'; if(el.tagName === 'TH' || el.tagName === 'TD') { el.style.border = '1px solid #cbd5e1'; el.style.padding = '12px'; el.style.fontSize = '14px'; el.style.textAlign = 'center'; el.style.whiteSpace = 'normal'; } if(el.tagName === 'TH') { el.style.backgroundColor = '#f1f5f9'; el.style.color = '#334155'; } if(el.tagName === 'TD' && el.cellIndex === 0) { el.style.textAlign = 'left'; el.style.fontWeight = 'bold'; } });
-                t.querySelectorAll('.shift-time-display').forEach(el => { el.style.fontSize = '18px'; el.style.fontWeight = '900'; });
-                t.querySelectorAll('.shift-status-display').forEach(el => { el.style.fontSize = '16px'; el.style.fontWeight = '900'; });
+                
+                // Input değerlerini Span'a çevirirken boyutlarını büyüttük (22px)
+                t.querySelectorAll('input').forEach(i => { const s = document.createElement('span'); s.innerText = i.value ? i.value + (elementId==='salary-container' && i.className.includes('w-20') && !i.value.includes('.') ? '.00' : '') : '0.00'; s.style.fontWeight = 'bold'; s.style.fontSize = '22px'; i.parentNode.replaceChild(s, i); });
+                
+                // Tailwind stillerini sıfırlayıp dev fontları zorla uyguluyoruz
+                t.querySelectorAll('*').forEach(el => { el.style.position = 'static'; el.style.overflow = 'visible'; el.style.transform = 'none'; });
+                
+                t.querySelectorAll('th, td').forEach(el => { 
+                    el.style.border = '2px solid #cbd5e1'; 
+                    el.style.padding = '16px'; 
+                    el.style.fontSize = '22px'; 
+                    el.style.textAlign = 'center'; 
+                    el.style.whiteSpace = 'normal'; 
+                });
+                
+                t.querySelectorAll('th').forEach(el => { el.style.backgroundColor = '#f1f5f9'; el.style.color = '#334155'; el.style.fontSize = '22px'; });
+                t.querySelectorAll('td:first-child').forEach(el => { el.style.textAlign = 'left'; el.style.fontWeight = 'bold'; el.style.fontSize = '24px'; });
+                
+                // Tailwind küçük text sınıflarının üstüne büyük font atamaları
+                t.querySelectorAll('.text-\\[10px\\]').forEach(el => { el.style.fontSize = '18px'; });
+                t.querySelectorAll('.text-xs').forEach(el => { el.style.fontSize = '20px'; });
+                t.querySelectorAll('.text-sm').forEach(el => { el.style.fontSize = '24px'; });
+                
+                // Vardiya içindeki saatlerin ve etiketlerin dev boyutları
+                t.querySelectorAll('.shift-time-display').forEach(el => { el.style.fontSize = '26px'; el.style.fontWeight = '900'; });
+                t.querySelectorAll('.shift-status-display').forEach(el => { el.style.fontSize = '24px'; el.style.fontWeight = '900'; });
+                
                 c.appendChild(t); document.body.appendChild(c);
                 try {
-                    const canvas = await html2canvas(c, { scale: 2, backgroundColor: "#ffffff", useCORS: true, allowTaint: true, width: 1400, windowWidth: 1400 });
+                    // Yüksek Çözünürlüklü (scale: 2) Fotoğraf Çek
+                    const canvas = await html2canvas(c, { scale: 2, backgroundColor: "#ffffff", useCORS: true, allowTaint: true, width: 1800, windowWidth: 1800 });
                     const link = document.createElement('a'); link.download = filename; link.href = canvas.toDataURL("image/png"); link.click();
                 } catch(e) {} finally { document.body.removeChild(c); setLoading(false); }
             };
