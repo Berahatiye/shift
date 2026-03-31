@@ -20,6 +20,9 @@
         @keyframes fade-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
         .animate-fade-in { animation: fade-in 0.2s ease-out; }
         input[type="time"]::-webkit-calendar-picker-indicator { background: transparent; bottom: 0; color: transparent; cursor: pointer; height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto; }
+        /* Sayı inputlarındaki okları gizleme (daha temiz görünüm) */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
     
     <!-- Supabase ve React Kütüphaneleri -->
@@ -102,6 +105,8 @@
             if (mins < 0) mins += 24 * 60;
             return parseFloat((mins / 60).toFixed(2));
         };
+        
+        // Parayı kuruşlarıyla gösteren formatlayıcı (0.00 hassasiyeti)
         const formatMoney = (amount) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
         const calculateLeaveInfo = (empId, joinDateStr, leaveDateStr, isActive, shifts) => {
@@ -241,6 +246,15 @@
             const fileInputRef = useRef(null);
             const syncChannelRef = useRef(null);
             const [pendingRestoreData, setPendingRestoreData] = useState(null);
+            
+            // "Debounce" ve Stale State çözümü için ref
+            const inputDebounceRef = useRef(null);
+            const latestDataRef = useRef({ employees: [], shifts: {}, rates: {}, advances: {}, bonuses: {} });
+
+            // State her değiştiğinde reference kopyasını da güncelle
+            useEffect(() => {
+                latestDataRef.current = { employees, shifts, rates, advances, bonuses };
+            }, [employees, shifts, rates, advances, bonuses]);
 
             const sessionId = useMemo(() => {
                 try {
@@ -314,7 +328,7 @@
             const downloadBackup = () => {
                 const backupData = {
                     timestamp: new Date().toISOString(),
-                    employees, shifts, rates, advances, bonuses // Bonuses eklendi
+                    employees, shifts, rates, advances, bonuses
                 };
                 const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
@@ -357,7 +371,7 @@
                         shifts: pendingRestoreData.shifts || {},
                         rates: pendingRestoreData.rates || {},
                         advances: pendingRestoreData.advances || {},
-                        bonuses: pendingRestoreData.bonuses || {}, // Bonuses eklendi
+                        bonuses: pendingRestoreData.bonuses || {},
                         lastAction: "Eski JSON Yedeği Geri Yüklendi"
                     };
                     await saveToCloud(payload);
@@ -381,14 +395,14 @@
                     setShifts(d.shifts || {}); 
                     setRates(d.rates || {}); 
                     setAdvances(d.advances || {});
-                    setBonuses(d.bonuses || {}); // Bonuses eklendi
+                    setBonuses(d.bonuses || {}); 
                     setLastUpdated(d.lastUpdated || null); 
                     setLastAction(d.lastAction || ""); 
                 }
                 setDataLoaded(true);
             };
 
-            // Supabase Veri Dinleme (MİLİSANİYELİK ANINDA SENKRONİZASYON MOTORU - Presence Kaldırıldı)
+            // Supabase Veri Dinleme
             useEffect(() => { 
                 if (!isAuthenticated) return;
 
@@ -455,6 +469,14 @@
                 } catch (err) {}
             };
 
+            // Yazma İşlemleri İçin Gecikmeli Bulut Kaydedici (Titremeyi engeller)
+            const triggerDebouncedSave = (actionText) => {
+                if(inputDebounceRef.current) clearTimeout(inputDebounceRef.current);
+                inputDebounceRef.current = setTimeout(() => {
+                    saveToCloud({ ...latestDataRef.current, lastAction: actionText });
+                }, 1500); // 1.5 Saniye Bekle ve Buluta Gönder
+            };
+
             const activeEmployeesForSchedule = useMemo(() => employees.filter(emp => emp.isActive !== false || (emp.leaveDate && emp.leaveDate >= weekStart)), [employees, weekStart]);
             const weekDates = getWeekDates(weekStart);
             const getShift = (empId, date) => shifts[`${empId}_${date}`];
@@ -475,9 +497,11 @@
                         if (s) { if (s.isAnnualLeave) totalAnnualLeave++; else if (s.isOff) totalOff++; else { totalHours += calculateHours(s.start, s.end); totalShifts++; } }
                     }
                     const rK = `${emp.id}_${reportMonth}`;
-                    const rate = rates[rK] || 0;
-                    const advance = advances[rK] || 0;
-                    const bonus = bonuses[rK] || 0; // Prim verisi çekildi
+                    
+                    // Hesaplamalar esnasında sayısal (float) hale çeviriyoruz. 
+                    const rate = parseFloat(rates[rK]) || 0;
+                    const advance = parseFloat(advances[rK]) || 0;
+                    const bonus = parseFloat(bonuses[rK]) || 0; 
                     
                     // Maaş = (Saat x Ücret) + Prim - Avans
                     const grossSalary = totalHours * rate;
@@ -490,7 +514,7 @@
             const totalSalaryPayout = reportData.reduce((a, c) => a + c.netSalary, 0);
             const totalGross = reportData.reduce((a, c) => a + c.grossSalary, 0);
             const totalAdvance = reportData.reduce((a, c) => a + c.advance, 0);
-            const totalBonus = reportData.reduce((a, c) => a + c.bonus, 0); // Toplam prim
+            const totalBonus = reportData.reduce((a, c) => a + c.bonus, 0); 
 
             const handleCellClick = (empId, date) => { 
                 const s = getShift(empId, date); 
@@ -547,25 +571,29 @@
                 setDeleteConfirm(false);
             };
 
+            // Yazarken Titremeyi Önleyen Gecikmeli Güncellemeler (Debounced)
             const updateRate = (empId, val) => { 
                 const k = `${empId}_${reportMonth}`; 
-                const nextRates = { ...rates, [k]: parseFloat(val) || 0 };
+                const nextRates = { ...rates, [k]: val };
                 setRates(nextRates); 
-                saveToCloud({ employees, shifts, rates: nextRates, advances, bonuses, lastAction: `${employees.find(e => e.id === empId)?.name || 'Personel'}: Ücret güncellendi` }); 
+                latestDataRef.current.rates = nextRates; // Anlık Ref kopyasını hemen güncelle
+                triggerDebouncedSave('Ücret güncellendi'); 
             };
             
             const updateAdvance = (empId, val) => { 
                 const k = `${empId}_${reportMonth}`; 
-                const nextAdvances = { ...advances, [k]: parseFloat(val) || 0 };
+                const nextAdvances = { ...advances, [k]: val };
                 setAdvances(nextAdvances); 
-                saveToCloud({ employees, shifts, rates, advances: nextAdvances, bonuses, lastAction: `${employees.find(e => e.id === empId)?.name || 'Personel'}: Avans güncellendi` }); 
+                latestDataRef.current.advances = nextAdvances;
+                triggerDebouncedSave('Avans güncellendi'); 
             };
 
             const updateBonus = (empId, val) => { 
                 const k = `${empId}_${reportMonth}`; 
-                const nextBonuses = { ...bonuses, [k]: parseFloat(val) || 0 };
+                const nextBonuses = { ...bonuses, [k]: val };
                 setBonuses(nextBonuses); 
-                saveToCloud({ employees, shifts, rates, advances, bonuses: nextBonuses, lastAction: `${employees.find(e => e.id === empId)?.name || 'Personel'}: Prim güncellendi` }); 
+                latestDataRef.current.bonuses = nextBonuses;
+                triggerDebouncedSave('Prim güncellendi'); 
             };
 
             const performExport = async (elementId, filename) => {
@@ -574,7 +602,7 @@
                 const c = document.createElement('div'); Object.assign(c.style, { position: 'absolute', top: '-9999px', left: '0', width: '1400px', background: '#ffffff', padding: '40px', fontFamily: 'sans-serif', zIndex: '9999', boxSizing: 'border-box' });
                 c.innerHTML = `<div style="display: flex; align-items: center; gap: 25px; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 25px;"><img src="${LOGO_URL}" style="width: 80px; height: 80px; border-radius: 15px; object-fit: cover;" crossorigin="anonymous" /><div><h1 style="font-size: 36px; font-weight: 800; margin: 0; color: #1e293b;">Çınarcık</h1><p style="font-size: 16px; color: #64748b; margin: 8px 0 0 0; font-weight: 500;">Dönem: <strong style="color: #0f172a;">${elementId==='schedule-table-container' ? formatDateTR(weekStart) : formatMonthTR(reportMonth)}</strong></p></div></div>`;
                 const t = element.querySelector('table').cloneNode(true); t.style.width = '100%'; t.style.borderCollapse = 'collapse';
-                t.querySelectorAll('input').forEach(i => { const s = document.createElement('span'); s.innerText = i.value; s.style.fontWeight = 'bold'; s.style.fontSize = '14px'; i.parentNode.replaceChild(s, i); });
+                t.querySelectorAll('input').forEach(i => { const s = document.createElement('span'); s.innerText = i.value ? i.value + (elementId==='salary-container' && i.className.includes('w-20') && !i.value.includes('.') ? '.00' : '') : '0.00'; s.style.fontWeight = 'bold'; s.style.fontSize = '14px'; i.parentNode.replaceChild(s, i); });
                 t.querySelectorAll('*').forEach(el => { el.style.position = 'static'; el.style.overflow = 'visible'; el.style.transform = 'none'; if(el.tagName === 'TH' || el.tagName === 'TD') { el.style.border = '1px solid #cbd5e1'; el.style.padding = '12px'; el.style.fontSize = '14px'; el.style.textAlign = 'center'; el.style.whiteSpace = 'normal'; } if(el.tagName === 'TH') { el.style.backgroundColor = '#f1f5f9'; el.style.color = '#334155'; } if(el.tagName === 'TD' && el.cellIndex === 0) { el.style.textAlign = 'left'; el.style.fontWeight = 'bold'; } });
                 t.querySelectorAll('.shift-time-display').forEach(el => { el.style.fontSize = '18px'; el.style.fontWeight = '900'; });
                 t.querySelectorAll('.shift-status-display').forEach(el => { el.style.fontSize = '16px'; el.style.fontWeight = '900'; });
@@ -879,10 +907,15 @@
                                             <tr key={d.id} className={d.isActive === false ? "opacity-60 bg-slate-50" : ""}>
                                                 <td className="px-3 py-2 font-bold text-slate-800"><EmpCell emp={d} /></td>
                                                 <td className="px-3 py-2 text-center text-slate-600">{d.totalHours}</td><td className="px-3 py-2 text-center text-amber-600 font-bold">{d.totalAnnualLeave}</td>
-                                                <td className="px-3 py-2 text-center"><input type="number" step="0.01" value={rates[`${d.id}_${reportMonth}`]||''} onChange={(e) => updateRate(d.id, e.target.value)} placeholder="0.00" className="w-20 p-1 text-center border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent font-bold"/></td>
+                                                
+                                                <td className="px-3 py-2 text-center"><input type="number" step="0.01" value={rates[`${d.id}_${reportMonth}`] !== undefined ? rates[`${d.id}_${reportMonth}`] : ''} onChange={(e) => updateRate(d.id, e.target.value)} placeholder="0.00" className="w-20 p-1 text-center border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent font-bold"/></td>
+                                                
                                                 <td className="px-3 py-2 text-right text-slate-500 font-medium">{formatMoney(d.grossSalary)}</td>
-                                                <td className="px-3 py-2 text-center"><input type="number" step="0.01" value={bonuses[`${d.id}_${reportMonth}`] || ''} onChange={(e) => updateBonus(d.id, e.target.value)} placeholder="0.00" className="w-20 p-1 text-center border-b border-emerald-300 text-emerald-600 focus:border-emerald-500 outline-none bg-transparent font-bold"/></td>
-                                                <td className="px-3 py-2 text-center"><input type="number" step="0.01" value={advances[`${d.id}_${reportMonth}`] || ''} onChange={(e) => updateAdvance(d.id, e.target.value)} placeholder="0.00" className="w-20 p-1 text-center border-b border-red-300 text-red-600 focus:border-red-500 outline-none bg-transparent font-bold"/></td>
+                                                
+                                                <td className="px-3 py-2 text-center"><input type="number" step="0.01" value={bonuses[`${d.id}_${reportMonth}`] !== undefined ? bonuses[`${d.id}_${reportMonth}`] : ''} onChange={(e) => updateBonus(d.id, e.target.value)} placeholder="0.00" className="w-20 p-1 text-center border-b border-emerald-300 text-emerald-600 focus:border-emerald-500 outline-none bg-transparent font-bold"/></td>
+                                                
+                                                <td className="px-3 py-2 text-center"><input type="number" step="0.01" value={advances[`${d.id}_${reportMonth}`] !== undefined ? advances[`${d.id}_${reportMonth}`] : ''} onChange={(e) => updateAdvance(d.id, e.target.value)} placeholder="0.00" className="w-20 p-1 text-center border-b border-red-300 text-red-600 focus:border-red-500 outline-none bg-transparent font-bold"/></td>
+                                                
                                                 <td className="px-3 py-2 text-right font-bold text-green-600">{formatMoney(d.netSalary)}</td>
                                             </tr>
                                         ))}
